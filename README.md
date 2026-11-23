@@ -4,6 +4,10 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 
 <img src="docs/1-splash.png" width="300" alt="Startbildschirm"> <img src="docs/2-dashboard.png" width="300" alt="Dashboard"> <img src="docs/3-akku-kritisch.png" width="300" alt="Akku kritisch">
 
+**Leisten-Darstellung** (flach & breit, z. B. oben am Zweitbildschirm):
+
+<img src="docs/4-leiste.png" alt="Leiste">
+
 ## Funktionen
 
 | Bereich | Was passiert |
@@ -11,6 +15,9 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 | **Start** | Dunkelgrauer Startbildschirm mit Logo und Versionsnummer, danach wechselt die Ansicht zum Dashboard. |
 | **Akku** | Farbstufen: ab 40 % grün, darunter orange, unter 20 % rot. Ab **15 %** ohne Laden blinkt im Akkufeld ein rotes **⚠️ LADEN**. Außerdem: Ladestand, Lade-/Entladeleistung (W), Restzeit, Temperatur, Zustand (%), Ladezyklen und ein Balken mit Markierungen für beide Ladegrenzen. |
 | **CPU / GPU / RAM** | Aktuelle Auslastung mit Balkendiagramm der letzten ~50 Sekunden. Jeder Balken ist eingefärbt: grün = normal, orange = hoch (ab 70 %), rot = kritisch (ab 90 %). Die Grenzen sind einstellbar. |
+| **Akkuverlauf 24 h** | Kurve des Ladestands mit Zielbereich und den Schaltpunkten der Steckdose (▲ Ein, ▼ Aus). Bleibt bei Neustarts erhalten. So siehst du, ob die Automatik sauber zwischen den Grenzen pendelt. |
+| **Netzteil** | Nennleistung und tatsächliche Aufnahme, z. B. „Netzteil 96 W · liefert 45 W“. Arbeitet das Netzteil am Limit (≥ 95 %), wird die Anzeige orange. |
+| **Darstellung** | **Hochformat** (Widget) oder **Leiste** (1010 × 64 pt), umschaltbar unter Einstellungen → Allgemein oder per Rechtsklick. Jede Darstellung merkt sich ihre eigene Position. |
 | **Thermik** | Thermischer Zustand von macOS (Normal / Erhöht / Hoch / Kritisch). |
 | **Ladesteuerung** | Bei ≥ Obergrenze wird die Steckdose **AUS** geschaltet, bei ≤ Untergrenze **EIN**. Dazwischen wird nicht geschaltet (Hysterese). Ob der Befehl gewirkt hat, prüft die App am Netzteilsignal des Macs. Schlägt das fehl, versucht sie es bis zu 3-mal erneut. |
 | **Manuell** | Die Buttons *Ein*, *Aus* und *100 %* (einmalig voll laden). Manuelles Schalten pausiert die Automatik für 30 Minuten. |
