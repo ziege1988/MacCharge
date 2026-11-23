@@ -39,6 +39,36 @@ enum WidgetLayout: String, CaseIterable, Identifiable {
     var cornerRadius: CGFloat { self == .tall ? 20 : 14 }
 }
 
+enum ShortcutMode: String, CaseIterable, Identifiable {
+    case toggle    // ein Kurzbefehl, der die Steckdose umschaltet
+    case separate  // zwei Kurzbefehle: Ein / Aus
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .toggle: return "Ein Kurzbefehl (Umschalten)"
+        case .separate: return "Zwei Kurzbefehle (Ein / Aus)"
+        }
+    }
+}
+
+enum WindowLevelMode: String, CaseIterable, Identifiable {
+    case background // auf dem Schreibtisch, hinter allen Fenstern (wie ein Desktop-Widget)
+    case normal     // wie ein normales Fenster
+    case top        // immer im Vordergrund
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .background: return "Hintergrund (auf dem Schreibtisch)"
+        case .normal: return "Normal (wie ein Fenster)"
+        case .top: return "Immer im Vordergrund"
+        }
+    }
+}
+
 /// Alle Einstellungen, persistent in UserDefaults.
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -51,6 +81,8 @@ final class AppSettings: ObservableObject {
 
     // MARK: Steckdose
     @Published var backend: PlugBackend { didSet { d.set(backend.rawValue, forKey: "backend") } }
+    @Published var shortcutMode: ShortcutMode { didSet { d.set(shortcutMode.rawValue, forKey: "shortcutMode") } }
+    @Published var shortcutToggle: String { didSet { d.set(shortcutToggle, forKey: "shortcutToggle") } }
     @Published var shortcutOn: String { didSet { d.set(shortcutOn, forKey: "shortcutOn") } }
     @Published var shortcutOff: String { didSet { d.set(shortcutOff, forKey: "shortcutOff") } }
     @Published var refossHost: String { didSet { d.set(refossHost, forKey: "refossHost") } }
@@ -71,7 +103,7 @@ final class AppSettings: ObservableObject {
     // MARK: Allgemein
     @Published var layout: WidgetLayout { didSet { d.set(layout.rawValue, forKey: "layout") } }
     @Published var launchAtLogin: Bool { didSet { d.set(launchAtLogin, forKey: "launchAtLogin") } }
-    @Published var alwaysOnTop: Bool { didSet { d.set(alwaysOnTop, forKey: "alwaysOnTop") } }
+    @Published var windowLevel: WindowLevelMode { didSet { d.set(windowLevel.rawValue, forKey: "windowLevel") } }
     @Published var showOnAllSpaces: Bool { didSet { d.set(showOnAllSpaces, forKey: "showOnAllSpaces") } }
     @Published var widgetOpacity: Double { didSet { d.set(widgetOpacity, forKey: "widgetOpacity") } }
 
@@ -84,6 +116,8 @@ final class AppSettings: ObservableObject {
             "lowerLimit": 20,
             "upperLimit": 85,
             "backend": PlugBackend.shortcuts.rawValue,
+            "shortcutMode": ShortcutMode.toggle.rawValue,
+            "shortcutToggle": "MacCharge",
             "shortcutOn": "MacCharge Ein",
             "shortcutOff": "MacCharge Aus",
             "refossHost": "",
@@ -99,7 +133,7 @@ final class AppSettings: ObservableObject {
             "warnDelay": 10.0,
             "layout": WidgetLayout.tall.rawValue,
             "launchAtLogin": true,
-            "alwaysOnTop": true,
+            "windowLevel": WindowLevelMode.background.rawValue,
             "showOnAllSpaces": true,
             "widgetOpacity": 0.97,
             "autoCheckUpdates": true,
@@ -108,6 +142,8 @@ final class AppSettings: ObservableObject {
         lowerLimit = d.integer(forKey: "lowerLimit")
         upperLimit = d.integer(forKey: "upperLimit")
         backend = PlugBackend(rawValue: d.string(forKey: "backend") ?? "") ?? .shortcuts
+        shortcutMode = ShortcutMode(rawValue: d.string(forKey: "shortcutMode") ?? "") ?? .toggle
+        shortcutToggle = d.string(forKey: "shortcutToggle") ?? "MacCharge"
         shortcutOn = d.string(forKey: "shortcutOn") ?? "MacCharge Ein"
         shortcutOff = d.string(forKey: "shortcutOff") ?? "MacCharge Aus"
         refossHost = d.string(forKey: "refossHost") ?? ""
@@ -123,7 +159,7 @@ final class AppSettings: ObservableObject {
         warnDelay = d.double(forKey: "warnDelay")
         layout = WidgetLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .tall
         launchAtLogin = d.bool(forKey: "launchAtLogin")
-        alwaysOnTop = d.bool(forKey: "alwaysOnTop")
+        windowLevel = WindowLevelMode(rawValue: d.string(forKey: "windowLevel") ?? "") ?? .background
         showOnAllSpaces = d.bool(forKey: "showOnAllSpaces")
         widgetOpacity = d.double(forKey: "widgetOpacity")
         autoCheckUpdates = d.bool(forKey: "autoCheckUpdates")

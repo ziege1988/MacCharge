@@ -25,15 +25,18 @@ protocol PlugController {
 
 // MARK: - Apple Home über Kurzbefehle
 
-/// Schaltet die Steckdose über zwei Kurzbefehle der macOS-Kurzbefehle-App
-/// (Aktion "Zuhause steuern"). Funktioniert mit jeder HomeKit-Steckdose,
-/// ohne Cloud-Konto, ohne Kosten und ohne Apple-Entwicklerzugang.
+/// Schaltet die Steckdose über die macOS-Kurzbefehle-App (Aktion "Zuhause steuern").
+/// Entweder zwei Kurzbefehle (Ein/Aus) oder ein Umschalt-Kurzbefehl – im Umschalt-Modus
+/// prüft der ChargeController vorher über das Netzteilsignal, ob überhaupt geschaltet werden muss.
+/// Funktioniert mit jeder HomeKit-Steckdose, ohne Cloud-Konto, Kosten oder Apple-Entwicklerzugang.
 struct ShortcutsPlug: PlugController {
     let onName: String
     let offName: String
+    /// Gesetzt = Umschalt-Modus: dieser Kurzbefehl wird für Ein UND Aus ausgeführt.
+    var toggleName: String? = nil
 
     func setPower(_ on: Bool) async throws {
-        let name = (on ? onName : offName).trimmingCharacters(in: .whitespaces)
+        let name = (toggleName ?? (on ? onName : offName)).trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw PlugError.notConfigured("Kein Kurzbefehl-Name hinterlegt") }
         do {
             try await Self.run(["run", name])

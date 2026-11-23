@@ -22,7 +22,7 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 | **Ladesteuerung** | Bei ≥ Obergrenze wird die Steckdose **AUS** geschaltet, bei ≤ Untergrenze **EIN**. Dazwischen wird nicht geschaltet (Hysterese). Ob der Befehl gewirkt hat, prüft die App am Netzteilsignal des Macs. Schlägt das fehl, versucht sie es bis zu 3-mal erneut. |
 | **Manuell** | Die Buttons *Ein*, *Aus* und *100 %* (einmalig voll laden). Manuelles Schalten pausiert die Automatik für 30 Minuten. |
 | **Warnungen ‼️** | Bei Überlastung färbt sich der betroffene Bereich rot und zeigt ‼️. Das gilt für CPU, GPU, RAM, Akkutemperatur, Thermik und Steckdose. Die Schwellwerte lassen sich einstellen. |
-| **Fenster** | Lässt sich frei auf alle angeschlossenen Bildschirme ziehen. Die Position wird gespeichert. Wird ein Monitor abgesteckt, holt die App das Widget automatisch auf den Hauptbildschirm. |
+| **Fenster** | Liegt standardmäßig im **Hintergrund** auf dem Schreibtisch, hinter allen anderen Fenstern, wie ein Desktop-Widget. Alternativ „Normal“ oder „Immer im Vordergrund“ (Einstellungen → Allgemein → Ebene). Lässt sich frei auf alle angeschlossenen Bildschirme ziehen. Die Position wird gespeichert. Wird ein Monitor abgesteckt, holt die App das Widget automatisch auf den Hauptbildschirm. |
 | **Autostart** | Die App startet beim Anmelden automatisch. Das lässt sich in den Einstellungen abschalten. |
 | **Updates** | Die App prüft beim Start und danach alle 6 Stunden auf GitHub, ob es eine neue Version gibt. Unter Einstellungen → Updates installierst du sie mit **„Jetzt aktualisieren & neu starten“**. |
 
@@ -40,13 +40,17 @@ Voraussetzung: macOS 13 (Ventura) oder neuer, Apple Silicon oder Intel.
 
 ### Variante A: Apple Home über Kurzbefehle (Standard, empfohlen für HomeKit-Modelle)
 
-Funktioniert mit jeder Steckdose, die in der Home-App eingebunden ist.
+Funktioniert mit jeder Steckdose, die in der Home-App eingebunden ist. Es gibt zwei Möglichkeiten, wählbar unter Einstellungen → Steckdose:
 
-1. Steckdose über die Refoss-App bzw. die Home-App zu Apple Home hinzufügen.
-2. Die App **Kurzbefehle** auf dem Mac öffnen und zwei neue Kurzbefehle anlegen:
-   - **„MacCharge Ein“**: Aktion *Zuhause steuern* → Steckdose → *Einschalten*
-   - **„MacCharge Aus“**: Aktion *Zuhause steuern* → Steckdose → *Ausschalten*
-3. In MacCharge unter Einstellungen → Steckdose → **Verbindung testen** klicken.
+**Ein Kurzbefehl (Umschalten), Standard**
+1. In der App **Kurzbefehle** einen Kurzbefehl **„MacCharge“** anlegen: Aktion *Zuhause steuern* → Steckdose → *Umschalten*.
+2. MacCharge erkennt am Netzteil des Macs, ob gerade Strom fließt, und führt den Kurzbefehl nur aus, wenn wirklich umgeschaltet werden muss.
+3. Schlägt ein Schaltvorgang fehl (z. B. Ladekabel abgezogen), schaltet MacCharge **nicht** wiederholt hin und her. Die Automatik pausiert, bis sich das Netzteilsignal ändert oder du auf *Fortsetzen* klickst.
+
+**Zwei Kurzbefehle (Ein / Aus)**
+- **„MacCharge Ein“** (*Zuhause steuern* → *Einschalten*) und **„MacCharge Aus“** (*Ausschalten*). Diese Variante ist etwas robuster, weil der Zielzustand eindeutig ist.
+
+In beiden Fällen anschließend in MacCharge **Verbindung testen** klicken. Wichtig: Das Ladekabel bleibt dauerhaft im Mac stecken.
 
 ### Variante B: Refoss lokal (Open API)
 

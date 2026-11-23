@@ -36,10 +36,21 @@ final class WidgetWindow: NSPanel {
         layout == .tall ? "widgetOrigin" : "widgetOrigin.\(layout.rawValue)"
     }
 
-    func applyBehavior(alwaysOnTop: Bool, allSpaces: Bool) {
-        level = alwaysOnTop ? .floating : .normal
-        var behavior: NSWindow.CollectionBehavior = [.fullScreenAuxiliary, .ignoresCycle]
+    func applyBehavior(levelMode: WindowLevelMode, allSpaces: Bool) {
+        var behavior: NSWindow.CollectionBehavior = [.ignoresCycle]
         behavior.insert(allSpaces ? .canJoinAllSpaces : .managed)
+        switch levelMode {
+        case .background:
+            // Direkt über den Schreibtisch-Symbolen, unter allen normalen Fenstern.
+            // Bleibt bei "Schreibtisch anzeigen" und Mission Control an seinem Platz.
+            level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopIconWindow)) + 1)
+            behavior.insert(.stationary)
+        case .normal:
+            level = .normal
+        case .top:
+            level = .floating
+            behavior.insert(.fullScreenAuxiliary)
+        }
         collectionBehavior = behavior
     }
 
