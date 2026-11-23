@@ -35,6 +35,8 @@ final class AppSettings: ObservableObject {
     @Published var refossPassword: String { didSet { d.set(refossPassword, forKey: "refossPassword") } }
 
     // MARK: Warnungen (Überlastung)
+    /// Ab hier wird die Auslastung orange dargestellt (rot ab dem jeweiligen Warnwert).
+    @Published var loadHigh: Double { didSet { d.set(loadHigh, forKey: "loadHigh") } }
     @Published var cpuWarn: Double { didSet { d.set(cpuWarn, forKey: "cpuWarn") } }
     @Published var gpuWarn: Double { didSet { d.set(gpuWarn, forKey: "gpuWarn") } }
     @Published var ramWarn: Double { didSet { d.set(ramWarn, forKey: "ramWarn") } }
@@ -63,6 +65,7 @@ final class AppSettings: ObservableObject {
             "refossSwitchID": 1,
             "refossUser": "",
             "refossPassword": "",
+            "loadHigh": 70.0,
             "cpuWarn": 90.0,
             "gpuWarn": 90.0,
             "ramWarn": 90.0,
@@ -85,6 +88,7 @@ final class AppSettings: ObservableObject {
         refossSwitchID = d.integer(forKey: "refossSwitchID")
         refossUser = d.string(forKey: "refossUser") ?? ""
         refossPassword = d.string(forKey: "refossPassword") ?? ""
+        loadHigh = d.double(forKey: "loadHigh")
         cpuWarn = d.double(forKey: "cpuWarn")
         gpuWarn = d.double(forKey: "gpuWarn")
         ramWarn = d.double(forKey: "ramWarn")

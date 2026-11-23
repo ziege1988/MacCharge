@@ -130,16 +130,17 @@ private struct WarningSettings: View {
     var body: some View {
         Form {
             Section {
-                threshold("CPU-Auslastung", value: $settings.cpuWarn, range: 50...100, unit: "%")
-                threshold("GPU-Auslastung", value: $settings.gpuWarn, range: 50...100, unit: "%")
-                threshold("Arbeitsspeicher", value: $settings.ramWarn, range: 50...100, unit: "%")
+                threshold("Hoch (orange) ab", value: $settings.loadHigh, range: 30...95, unit: "%")
+                threshold("CPU kritisch (rot) ab", value: $settings.cpuWarn, range: 50...100, unit: "%")
+                threshold("GPU kritisch (rot) ab", value: $settings.gpuWarn, range: 50...100, unit: "%")
+                threshold("RAM kritisch (rot) ab", value: $settings.ramWarn, range: 50...100, unit: "%")
                 threshold("Akkutemperatur", value: $settings.batteryTempWarn, range: 30...60, unit: "°C")
                 threshold("Leistung Steckdose", value: $settings.plugPowerWarn, range: 30...3500, unit: "W", step: 10)
                 threshold("Verzögerung", value: $settings.warnDelay, range: 0...60, unit: "s")
             } header: {
                 Text("Schwellwerte für ‼️-Warnungen")
             } footer: {
-                Text("Wird ein Wert länger als die Verzögerung überschritten, färbt sich der jeweilige Bereich im Widget rot und zeigt ‼️. Thermische Drosselung und Steckdosenfehler werden sofort angezeigt.")
+                Text("Balken: grün = normal, orange = hoch, rot = kritisch. Bleibt ein Wert länger als die Verzögerung im roten Bereich, färbt sich die ganze Kachel rot und zeigt ‼️. Akku: unter 40 % orange, unter 20 % rot, ab 15 % blinkt „LADEN“.")
                     .foregroundStyle(.secondary)
             }
         }

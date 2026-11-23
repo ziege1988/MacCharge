@@ -55,33 +55,43 @@ struct DashboardView: View {
     // MARK: Kacheln
 
     private var cpuTile: some View {
-        Tile(title: "CPU", icon: "cpu", warning: monitor.warnings.contains(.cpu)) {
-            valueLine(monitor.cpu.map { String(format: "%.0f %%", $0) } ?? "–")
-            Sparkline(values: monitor.cpuHistory, color: monitor.warnings.contains(.cpu) ? Theme.warning : Theme.accent)
-                .frame(height: 18)
-        }
+        loadTile(title: "CPU", icon: "cpu", area: .cpu, value: monitor.cpu,
+                 history: monitor.cpuHistory, critical: settings.cpuWarn, detail: nil)
     }
 
     private var gpuTile: some View {
-        Tile(title: "GPU", icon: "square.stack.3d.up.fill", warning: monitor.warnings.contains(.gpu)) {
-            valueLine(monitor.gpu.map { String(format: "%.0f %%", $0) } ?? "n. v.")
-            Sparkline(values: monitor.gpuHistory, color: monitor.warnings.contains(.gpu) ? Theme.warning : Theme.accent)
-                .frame(height: 18)
-        }
+        loadTile(title: "GPU", icon: "square.stack.3d.up.fill", area: .gpu, value: monitor.gpu,
+                 history: monitor.gpuHistory, critical: settings.gpuWarn, detail: nil)
     }
 
     private var ramTile: some View {
         let mem = monitor.memory
-        let warn = monitor.warnings.contains(.ram)
-        return Tile(title: "RAM", icon: "memorychip", warning: warn) {
-            valueLine(mem.map { String(format: "%.0f %%", $0.percent) } ?? "–")
-            VStack(alignment: .leading, spacing: 4) {
-                Meter(value: mem?.percent ?? 0, color: warn ? Theme.warning : Theme.accent)
-                Text(mem.map { "\(gb($0.usedBytes)) / \(gb($0.totalBytes)) GB" } ?? " ")
-                    .font(.system(size: 9, weight: .medium).monospacedDigit())
-                    .foregroundStyle(Theme.textSecondary)
+        return loadTile(title: "RAM", icon: "memorychip", area: .ram, value: mem?.percent,
+                        history: monitor.ramHistory, critical: settings.ramWarn,
+                        detail: mem.map { "\(gb($0.usedBytes))/\(gb($0.totalBytes)) GB" })
+    }
+
+    /// Kachel mit aktuellem Wert (in Ampelfarbe) und Balkendiagramm des Verlaufs.
+    private func loadTile(title: String, icon: String, area: WarningArea, value: Double?,
+                          history: [Double], critical: Double, detail: String?) -> some View {
+        let level = value.map { Level.load($0, high: settings.loadHigh, critical: critical) } ?? .ok
+        return Tile(title: title, icon: icon, warning: monitor.warnings.contains(area)) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value.map { String(format: "%.0f %%", $0) } ?? "n. v.")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(value == nil ? Theme.textSecondary : (level == .ok ? Theme.textPrimary : level.color))
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                if let detail {
+                    Text(detail)
+                        .font(.system(size: 8.5, weight: .medium).monospacedDigit())
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
             }
-            .frame(height: 18)
+            LoadBarChart(values: history, high: settings.loadHigh, critical: critical)
+                .frame(height: 22)
         }
     }
 
@@ -100,12 +110,13 @@ struct DashboardView: View {
         return Tile(title: "Thermik", icon: "thermometer.medium", warning: warn) {
             valueLine(label)
             VStack(alignment: .leading, spacing: 4) {
-                Meter(value: level, color: warn ? Theme.warning : (state == .fair ? Theme.amber : Theme.accent))
+                Meter(value: level, color: (state == .serious || state == .critical) ? Theme.warning
+                                           : (state == .fair ? Theme.orange : Theme.accent))
                 Text(monitor.battery.temperatureC.map { String(format: "Akku %.1f °C", $0) } ?? " ")
                     .font(.system(size: 9, weight: .medium).monospacedDigit())
                     .foregroundStyle(monitor.warnings.contains(.battery) ? Theme.warning : Theme.textSecondary)
             }
-            .frame(height: 18)
+            .frame(height: 22)
         }
     }
 
@@ -132,25 +143,32 @@ struct BatteryCard: View {
     var body: some View {
         let b = monitor.battery
         let warn = monitor.warnings.contains(.battery)
-        Tile(title: "Akku", icon: b.isCharging ? "bolt.fill" : "battery.75", warning: warn) {
+        let level = Level.battery(b.percent)
+        let critical = b.hasBattery && b.percent <= BatteryThresholds.chargeNow && !b.isCharging
+        Tile(title: "Akku", icon: b.isCharging ? "bolt.fill" : "battery.25", warning: warn || critical) {
             if !b.hasBattery {
                 Text("Kein Akku gefunden").font(.system(size: 13)).foregroundStyle(Theme.textSecondary)
             } else {
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(b.percent)")
+                HStack(alignment: .center) {
+                    (Text("\(b.percent)")
                         .font(.system(size: 34, weight: .bold, design: .rounded).monospacedDigit())
-                        .foregroundColor(Theme.textPrimary)
+                        .foregroundColor(level == .ok ? Theme.textPrimary : level.color)
                     + Text(" %").font(.system(size: 16, weight: .semibold, design: .rounded))
-                        .foregroundColor(Theme.textSecondary)
+                        .foregroundColor(Theme.textSecondary))
                     Spacer()
-                    Text(statusText(b)).font(.system(size: 11, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(b.isCharging ? Theme.accent : Theme.textPrimary)
-                        .lineLimit(1)
+                    if critical {
+                        BlinkingChargeWarning()
+                    } else {
+                        Text(statusText(b)).font(.system(size: 11, weight: .semibold).monospacedDigit())
+                            .foregroundStyle(b.isCharging ? Theme.accent : Theme.textPrimary)
+                            .lineLimit(1)
+                    }
                 }
                 LimitBar(percent: b.percent, lower: settings.lowerLimit, upper: charger.effectiveUpperLimit,
-                         charging: b.isCharging, warning: warn)
-                Text(detailText(b)).font(.system(size: 9.5).monospacedDigit())
-                    .foregroundStyle(warn ? Theme.warning : Theme.textSecondary)
+                         level: level)
+                Text(critical ? "Akku kritisch · \(statusText(b))" : detailText(b))
+                    .font(.system(size: 9.5, weight: critical ? .semibold : .regular).monospacedDigit())
+                    .foregroundStyle(warn || critical ? Theme.warning : Theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -182,8 +200,7 @@ struct LimitBar: View {
     let percent: Int
     let lower: Int
     let upper: Int
-    let charging: Bool
-    let warning: Bool
+    let level: Level
 
     var body: some View {
         GeometryReader { geo in
@@ -196,8 +213,7 @@ struct LimitBar: View {
                     .frame(width: w * CGFloat(upper - lower) / 100)
                     .offset(x: w * CGFloat(lower) / 100)
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(LinearGradient(colors: warning ? [Theme.warning, Theme.warning]
-                                                         : [Theme.accentDim, Theme.accent],
+                    .fill(LinearGradient(colors: [level.color.opacity(0.65), level.color],
                                          startPoint: .leading, endPoint: .trailing))
                     .frame(width: max(6, w * CGFloat(percent) / 100))
                 marker(at: lower, width: w, label: "\(lower)")

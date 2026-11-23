@@ -18,6 +18,7 @@ final class SystemMonitor: ObservableObject {
     @Published private(set) var thermalState = ProcessInfo.processInfo.thermalState
     @Published private(set) var cpuHistory: [Double] = []
     @Published private(set) var gpuHistory: [Double] = []
+    @Published private(set) var ramHistory: [Double] = []
 
     /// Aktive Warnungen (nach Ablauf der Verzögerung).
     @Published private(set) var warnings: Set<WarningArea> = []
@@ -53,21 +54,29 @@ final class SystemMonitor: ObservableObject {
 
         if let cpu { cpuHistory = Array((cpuHistory + [cpu]).suffix(Self.historyLength)) }
         if let gpu { gpuHistory = Array((gpuHistory + [gpu]).suffix(Self.historyLength)) }
+        if let ram = memory?.percent { ramHistory = Array((ramHistory + [ram]).suffix(Self.historyLength)) }
         evaluateWarnings()
     }
 
     /// Demo-Modus (MACCHARGE_DEMO=1): simulierte Werte für Screenshots/Tests ohne Akku.
-    static let demoMode = ProcessInfo.processInfo.environment["MACCHARGE_DEMO"] == "1"
+    /// MACCHARGE_DEMO=1 → normal (78 %, lädt), MACCHARGE_DEMO=low → 14 %, Akkubetrieb.
+    static let demoValue = ProcessInfo.processInfo.environment["MACCHARGE_DEMO"]
+    static var demoMode: Bool { demoValue != nil }
+    private var demoStep = 0
 
     private func applyDemoValues() {
-        cpu = 93 + Double.random(in: 0...5)
-        gpu = 35 + Double.random(in: 0...20)
+        demoStep += 1
+        // CPU läuft durch alle Bereiche (grün → orange → rot), damit alle Farben sichtbar sind
+        cpu = [15, 35, 55, 75, 85, 95][demoStep % 6] + Double.random(in: 0...4)
+        gpu = 30 + Double.random(in: 0...45)
+        let low = Self.demoValue == "low"
         battery.hasBattery = true
-        battery.percent = 78
-        battery.isCharging = true
-        battery.externalPower = true
-        battery.minutesToFull = 42
-        battery.watts = 27.4
+        battery.percent = low ? 14 : 78
+        battery.isCharging = !low
+        battery.externalPower = !low
+        battery.minutesToFull = low ? nil : 42
+        battery.minutesToEmpty = low ? 38 : nil
+        battery.watts = low ? -9.8 : 27.4
         battery.temperatureC = 31.5
         battery.healthPercent = 94
         battery.cycleCount = 212

@@ -141,3 +141,106 @@ struct BrandText: View {
             .font(.system(size: size, weight: .bold, design: .rounded))
     }
 }
+
+// MARK: - Ampelfarben
+
+enum Level {
+    case ok, high, critical
+
+    var color: Color {
+        switch self {
+        case .ok: return Theme.accent
+        case .high: return Theme.orange
+        case .critical: return Theme.warning
+        }
+    }
+
+    /// Auslastung: grün < hoch ≤ orange < kritisch ≤ rot
+    static func load(_ value: Double, high: Double, critical: Double) -> Level {
+        if value >= critical { return .critical }
+        if value >= high { return .high }
+        return .ok
+    }
+
+    /// Akku: ≥ 40 % grün, 20–39 % orange, < 20 % rot
+    static func battery(_ percent: Int) -> Level {
+        if percent < BatteryThresholds.red { return .critical }
+        if percent < BatteryThresholds.orange { return .high }
+        return .ok
+    }
+}
+
+enum BatteryThresholds {
+    static let orange = 40
+    static let red = 20
+    /// Ab hier blinkt im Akkufeld die Warnung "LADEN".
+    static let chargeNow = 15
+}
+
+extension Theme {
+    static let orange = Color(red: 1.0, green: 0.58, blue: 0.0)
+}
+
+/// Balkendiagramm des Verlaufs: jeder Balken in seiner Ampelfarbe.
+struct LoadBarChart: View {
+    let values: [Double]          // 0…100, ältester zuerst
+    let high: Double
+    let critical: Double
+    var bars: Int = 24            // ≈ 48 s bei 2-s-Takt
+
+    var body: some View {
+        GeometryReader { geo in
+            let gap: CGFloat = 1.5
+            let barWidth = max(1, (geo.size.width - gap * CGFloat(bars - 1)) / CGFloat(bars))
+            let recent = Array(values.suffix(bars))
+            let padding = bars - recent.count
+            HStack(alignment: .bottom, spacing: gap) {
+                ForEach(0..<bars, id: \.self) { i in
+                    let value = i >= padding ? recent[i - padding] : nil
+                    RoundedRectangle(cornerRadius: 1, style: .continuous)
+                        .fill(value.map { Level.load($0, high: high, critical: critical).color } ?? Color.white.opacity(0.06))
+                        .opacity(value == nil ? 1 : (i == bars - 1 ? 1 : 0.85))
+                        .frame(width: barWidth,
+                               height: max(2, geo.size.height * CGFloat(min(max(value ?? 0, 0), 100)) / 100))
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
+            .background(alignment: .bottom) {
+                // Hilfslinien für orange/rot
+                ZStack(alignment: .bottom) {
+                    guide(at: high, height: geo.size.height, color: Theme.orange)
+                    guide(at: critical, height: geo.size.height, color: Theme.warning)
+                }
+            }
+        }
+        .animation(.easeOut(duration: 0.3), value: values.last ?? 0)
+    }
+
+    private func guide(at value: Double, height: CGFloat, color: Color) -> some View {
+        Rectangle()
+            .fill(color.opacity(0.25))
+            .frame(height: 0.5)
+            .offset(y: -height * CGFloat(value) / 100)
+    }
+}
+
+/// Blinkender roter Hinweis "⚠️ LADEN".
+struct BlinkingChargeWarning: View {
+    @State private var on = true
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "exclamationmark.triangle.fill")
+            Text("LADEN")
+        }
+        .font(.system(size: 11, weight: .heavy))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 8).padding(.vertical, 3)
+        .background(Capsule().fill(Theme.warning))
+        .opacity(on ? 1 : 0.25)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) { on = false }
+        }
+        .help("Akku kritisch – bitte laden")
+    }
+}
