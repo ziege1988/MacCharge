@@ -74,6 +74,15 @@ jobs:
           open --env MACCHARGE_DEMO=1 --env MACCHARGE_TEST_TOGGLE_LAYOUT=1 dist/MacCharge.app
           sleep 12 && screencapture -x -R "0,0,$W,620" shots/8-umgeschaltet-leiste.png
           pkill -x MacCharge || true
+          # 5) Hintergrund-Ebene: Finder-Fenster über das Widget legen → Widget muss dahinter liegen
+          defaults write $DOM layout tall
+          open --env MACCHARGE_DEMO=1 dist/MacCharge.app
+          sleep 6
+          osascript -e 'tell application "Finder" to activate' \
+                    -e 'tell application "Finder" to make new Finder window' \
+                    -e "tell application \"Finder\" to set bounds of front window to {$(( W - 420 )), 120, $(( W - 60 )), 420}" || true
+          sleep 2 && screencapture -x -R "$X,0,360,600" shots/9-hintergrund.png
+          pkill -x MacCharge || true
           for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done
 
       - name: Screenshots hochladen
