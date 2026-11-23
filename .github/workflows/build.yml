@@ -1,0 +1,44 @@
+name: Build & Release
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version bestimmen
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: App bauen
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: ./scripts/build-app.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: MacCharge-${{ steps.ver.outputs.version }}
+          path: dist/MacCharge-*.zip
+
+      - name: GitHub Release veröffentlichen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MacCharge-*.zip
+          generate_release_notes: true
