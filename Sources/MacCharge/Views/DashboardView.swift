@@ -205,7 +205,7 @@ struct LimitBar: View {
             }
         }
         .frame(height: 10)
-        .padding(.bottom, 8)
+        .padding(.bottom, 13)
         .animation(.easeOut(duration: 0.5), value: percent)
     }
 

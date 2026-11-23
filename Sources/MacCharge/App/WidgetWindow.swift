@@ -3,7 +3,7 @@ import AppKit
 /// Randloses, frei verschiebbares Widget-Fenster. Kann auf jeden angeschlossenen
 /// Bildschirm gezogen werden; die Position wird gespeichert und beim Start wiederhergestellt.
 final class WidgetWindow: NSPanel {
-    static let size = NSSize(width: 288, height: 468)
+    static let size = NSSize(width: 288, height: 474)
     private static let originKey = "widgetOrigin"     // obere linke Ecke (x, y) in globalen Koordinaten
     private static let screenKey = "widgetScreen"     // Name des Bildschirms (Information/Fallback)
 
