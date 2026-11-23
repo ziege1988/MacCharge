@@ -205,17 +205,16 @@ struct LimitBar: View {
             }
         }
         .frame(height: 10)
-        .padding(.bottom, 13)
+        .padding(.vertical, 3)
         .animation(.easeOut(duration: 0.5), value: percent)
     }
 
     private func marker(at value: Int, width: CGFloat, label: String) -> some View {
-        VStack(spacing: 1) {
-            Rectangle().fill(Color.white.opacity(0.8)).frame(width: 1.5, height: 14)
-            Text(label).font(.system(size: 8, weight: .medium).monospacedDigit()).foregroundStyle(Theme.textSecondary)
-                .fixedSize()
-        }
-        .offset(x: width * CGFloat(value) / 100 - 0.75, y: 9)
+        RoundedRectangle(cornerRadius: 1)
+            .fill(Color.white.opacity(0.85))
+            .frame(width: 2, height: 16)
+            .offset(x: width * CGFloat(value) / 100 - 1)
+            .help("Grenze \(label) %")
     }
 }
 
