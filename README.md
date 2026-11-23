@@ -40,13 +40,17 @@ Voraussetzung: macOS 13 (Ventura) oder neuer, Apple Silicon oder Intel.
 
 ### Variante A: Apple Home über Kurzbefehle (Standard, empfohlen für HomeKit-Modelle)
 
-Funktioniert mit jeder Steckdose, die in der Home-App eingebunden ist.
+Funktioniert mit jeder Steckdose, die in der Home-App eingebunden ist. Es gibt zwei Möglichkeiten, wählbar unter Einstellungen → Steckdose:
 
-1. Steckdose über die Refoss-App bzw. die Home-App zu Apple Home hinzufügen.
-2. Die App **Kurzbefehle** auf dem Mac öffnen und zwei neue Kurzbefehle anlegen:
-   - **„MacCharge Ein“**: Aktion *Zuhause steuern* → Steckdose → *Einschalten*
-   - **„MacCharge Aus“**: Aktion *Zuhause steuern* → Steckdose → *Ausschalten*
-3. In MacCharge unter Einstellungen → Steckdose → **Verbindung testen** klicken.
+**Ein Kurzbefehl (Umschalten), Standard**
+1. In der App **Kurzbefehle** einen Kurzbefehl **„MacCharge“** anlegen: Aktion *Zuhause steuern* → Steckdose → *Umschalten*.
+2. MacCharge erkennt am Netzteil des Macs, ob gerade Strom fließt, und führt den Kurzbefehl nur aus, wenn wirklich umgeschaltet werden muss.
+3. Schlägt ein Schaltvorgang fehl (z. B. Ladekabel abgezogen), schaltet MacCharge **nicht** wiederholt hin und her. Die Automatik pausiert, bis sich das Netzteilsignal ändert oder du auf *Fortsetzen* klickst.
+
+**Zwei Kurzbefehle (Ein / Aus)**
+- **„MacCharge Ein“** (*Zuhause steuern* → *Einschalten*) und **„MacCharge Aus“** (*Ausschalten*). Diese Variante ist etwas robuster, weil der Zielzustand eindeutig ist.
+
+In beiden Fällen anschließend in MacCharge **Verbindung testen** klicken. Wichtig: Das Ladekabel bleibt dauerhaft im Mac stecken.
 
 ### Variante B: Refoss lokal (Open API)
 
