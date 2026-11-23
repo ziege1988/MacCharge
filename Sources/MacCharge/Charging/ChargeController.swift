@@ -123,6 +123,11 @@ final class ChargeController: ObservableObject {
     }
 
     private func send(_ on: Bool, reason: String) async {
+        if SystemMonitor.demoMode {
+            // Demo-Modus schaltet niemals die echte Steckdose
+            lastAction = "Demo · würde \(on ? "einschalten" : "ausschalten"): \(reason)"
+            return
+        }
         busy = true
         defer { busy = false }
         phase = .switching(on)

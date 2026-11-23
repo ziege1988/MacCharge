@@ -2,16 +2,15 @@
 
 Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden des MacBooks über eine **Refoss-Smart-Steckdose** steuert, standardmäßig zwischen **20 %** und **85 %**. Die App ist komplett kostenlos: keine Cloud, kein Abo, kein Apple-Entwicklerkonto.
 
-<img src="docs/1-splash.png" width="300" alt="Startbildschirm"> <img src="docs/2-dashboard.png" width="300" alt="Dashboard mit CPU-Warnung">
+<img src="docs/1-splash.png" width="300" alt="Startbildschirm"> <img src="docs/2-dashboard.png" width="300" alt="Dashboard"> <img src="docs/3-akku-kritisch.png" width="300" alt="Akku kritisch">
 
 ## Funktionen
 
 | Bereich | Was passiert |
 |---|---|
 | **Start** | Dunkelgrauer Startbildschirm mit Logo und Versionsnummer, danach wechselt die Ansicht zum Dashboard. |
-| **Akku** | Ladestand, Lade-/Entladeleistung (W), Restzeit, Temperatur, Zustand (%), Ladezyklen und ein Balken mit Markierungen für beide Ladegrenzen. |
-| **CPU / GPU** | Aktuelle Auslastung mit Verlauf der letzten 2 Minuten. |
-| **RAM** | Belegter Speicher in % und GB, berechnet wie in der Aktivitätsanzeige. |
+| **Akku** | Farbstufen: ab 40 % grün, darunter orange, unter 20 % rot. Ab **15 %** ohne Laden blinkt im Akkufeld ein rotes **⚠️ LADEN**. Außerdem: Ladestand, Lade-/Entladeleistung (W), Restzeit, Temperatur, Zustand (%), Ladezyklen und ein Balken mit Markierungen für beide Ladegrenzen. |
+| **CPU / GPU / RAM** | Aktuelle Auslastung mit Balkendiagramm der letzten ~50 Sekunden. Jeder Balken ist eingefärbt: grün = normal, orange = hoch (ab 70 %), rot = kritisch (ab 90 %). Die Grenzen sind einstellbar. |
 | **Thermik** | Thermischer Zustand von macOS (Normal / Erhöht / Hoch / Kritisch). |
 | **Ladesteuerung** | Bei ≥ Obergrenze wird die Steckdose **AUS** geschaltet, bei ≤ Untergrenze **EIN**. Dazwischen wird nicht geschaltet (Hysterese). Ob der Befehl gewirkt hat, prüft die App am Netzteilsignal des Macs. Schlägt das fehl, versucht sie es bis zu 3-mal erneut. |
 | **Manuell** | Die Buttons *Ein*, *Aus* und *100 %* (einmalig voll laden). Manuelles Schalten pausiert die Automatik für 30 Minuten. |
