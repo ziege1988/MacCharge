@@ -31,7 +31,7 @@ enum WidgetLayout: String, CaseIterable, Identifiable {
 
     var size: CGSize {
         switch self {
-        case .tall: return CGSize(width: 288, height: 516)
+        case .tall: return CGSize(width: 288, height: 548)
         case .bar: return CGSize(width: 1010, height: 64)
         }
     }

@@ -18,7 +18,7 @@ struct BarDashboardView: View {
                            startPoint: .top, endPoint: .bottom)
             WindowDragArea()
             HStack(spacing: 6) {
-                brand.frame(width: 92)
+                brand.frame(width: 104)
                 batterySegment.frame(width: 178)
                 historySegment.frame(width: 150)
                 loadSegment("CPU", icon: "cpu", area: .cpu, value: monitor.cpu,
@@ -40,7 +40,7 @@ struct BarDashboardView: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 5) {
                 Image(nsImage: AppInfo.logo).resizable().frame(width: 18, height: 18)
-                BrandText(size: 12)
+                BrandText(size: 12).fixedSize()
             }
             PlugPill()
         }
@@ -89,7 +89,7 @@ struct BarDashboardView: View {
             Color.clear.frame(height: 20)
         }
         .overlay(alignment: .topTrailing) {
-            Text(AdapterInfo.text(b))
+            Text("🔌 " + AdapterInfo.text(b, compact: true))
                 .font(.system(size: 8.5, weight: .medium).monospacedDigit())
                 .foregroundStyle(AdapterInfo.atLimit(b) ? Theme.orange : Theme.textSecondary)
                 .lineLimit(1)

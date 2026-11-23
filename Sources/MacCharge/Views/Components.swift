@@ -310,8 +310,12 @@ struct BatteryHistoryChart: View {
 
 /// Netzteil-Info, z. B. "Netzteil 96 W · liefert 45 W".
 enum AdapterInfo {
-    static func text(_ b: BatteryReading) -> String {
-        guard b.externalPower else { return "Kein Netzteil" }
+    static func text(_ b: BatteryReading, compact: Bool = false) -> String {
+        guard b.externalPower else { return compact ? "kein NT" : "Kein Netzteil" }
+        if compact {
+            let rated = b.adapterWatts.map { "\($0) W" } ?? "NT"
+            return b.inputWatts.map { String(format: "%@ · %.0f W", rated, $0) } ?? rated
+        }
         var t = b.adapterWatts.map { "Netzteil \($0) W" } ?? "Netzteil"
         if let input = b.inputWatts { t += String(format: " · liefert %.0f W", input) }
         return t
