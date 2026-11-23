@@ -47,7 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = makeHostingView(layout: settings.layout, splash: true)
         window.menu = contextMenu()
         window.contentView?.menu = window.menu
-        window.applyBehavior(alwaysOnTop: settings.alwaysOnTop, allSpaces: settings.showOnAllSpaces)
+        window.applyBehavior(levelMode: settings.windowLevel, allSpaces: settings.showOnAllSpaces)
         window.alphaValue = settings.widgetOpacity
         window.orderFrontRegardless()
         widget = window
@@ -153,9 +153,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func observeSettings() {
-        settings.$alwaysOnTop.combineLatest(settings.$showOnAllSpaces)
+        settings.$windowLevel.combineLatest(settings.$showOnAllSpaces)
             .dropFirst()
-            .sink { [weak self] top, spaces in self?.widget?.applyBehavior(alwaysOnTop: top, allSpaces: spaces) }
+            .sink { [weak self] mode, spaces in self?.widget?.applyBehavior(levelMode: mode, allSpaces: spaces) }
             .store(in: &cancellables)
         settings.$layout
             .dropFirst()

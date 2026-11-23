@@ -53,6 +53,22 @@ enum ShortcutMode: String, CaseIterable, Identifiable {
     }
 }
 
+enum WindowLevelMode: String, CaseIterable, Identifiable {
+    case background // auf dem Schreibtisch, hinter allen Fenstern (wie ein Desktop-Widget)
+    case normal     // wie ein normales Fenster
+    case top        // immer im Vordergrund
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .background: return "Hintergrund (auf dem Schreibtisch)"
+        case .normal: return "Normal (wie ein Fenster)"
+        case .top: return "Immer im Vordergrund"
+        }
+    }
+}
+
 /// Alle Einstellungen, persistent in UserDefaults.
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -87,7 +103,7 @@ final class AppSettings: ObservableObject {
     // MARK: Allgemein
     @Published var layout: WidgetLayout { didSet { d.set(layout.rawValue, forKey: "layout") } }
     @Published var launchAtLogin: Bool { didSet { d.set(launchAtLogin, forKey: "launchAtLogin") } }
-    @Published var alwaysOnTop: Bool { didSet { d.set(alwaysOnTop, forKey: "alwaysOnTop") } }
+    @Published var windowLevel: WindowLevelMode { didSet { d.set(windowLevel.rawValue, forKey: "windowLevel") } }
     @Published var showOnAllSpaces: Bool { didSet { d.set(showOnAllSpaces, forKey: "showOnAllSpaces") } }
     @Published var widgetOpacity: Double { didSet { d.set(widgetOpacity, forKey: "widgetOpacity") } }
 
@@ -117,7 +133,7 @@ final class AppSettings: ObservableObject {
             "warnDelay": 10.0,
             "layout": WidgetLayout.tall.rawValue,
             "launchAtLogin": true,
-            "alwaysOnTop": true,
+            "windowLevel": WindowLevelMode.background.rawValue,
             "showOnAllSpaces": true,
             "widgetOpacity": 0.97,
             "autoCheckUpdates": true,
@@ -143,7 +159,7 @@ final class AppSettings: ObservableObject {
         warnDelay = d.double(forKey: "warnDelay")
         layout = WidgetLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .tall
         launchAtLogin = d.bool(forKey: "launchAtLogin")
-        alwaysOnTop = d.bool(forKey: "alwaysOnTop")
+        windowLevel = WindowLevelMode(rawValue: d.string(forKey: "windowLevel") ?? "") ?? .background
         showOnAllSpaces = d.bool(forKey: "showOnAllSpaces")
         widgetOpacity = d.double(forKey: "widgetOpacity")
         autoCheckUpdates = d.bool(forKey: "autoCheckUpdates")

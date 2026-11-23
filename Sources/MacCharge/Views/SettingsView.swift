@@ -187,7 +187,9 @@ private struct GeneralSettings: View {
             }
             Section("Start & Fenster") {
                 Toggle("Beim Anmelden automatisch starten", isOn: $settings.launchAtLogin)
-                Toggle("Widget immer im Vordergrund", isOn: $settings.alwaysOnTop)
+                Picker("Ebene", selection: $settings.windowLevel) {
+                    ForEach(WindowLevelMode.allCases) { Text($0.title).tag($0) }
+                }
                 Toggle("Auf allen Schreibtischen (Spaces) anzeigen", isOn: $settings.showOnAllSpaces)
                 LabeledContent("Deckkraft") {
                     Slider(value: $settings.widgetOpacity, in: 0.5...1.0).frame(width: 220)

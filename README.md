@@ -22,7 +22,7 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 | **Ladesteuerung** | Bei ≥ Obergrenze wird die Steckdose **AUS** geschaltet, bei ≤ Untergrenze **EIN**. Dazwischen wird nicht geschaltet (Hysterese). Ob der Befehl gewirkt hat, prüft die App am Netzteilsignal des Macs. Schlägt das fehl, versucht sie es bis zu 3-mal erneut. |
 | **Manuell** | Die Buttons *Ein*, *Aus* und *100 %* (einmalig voll laden). Manuelles Schalten pausiert die Automatik für 30 Minuten. |
 | **Warnungen ‼️** | Bei Überlastung färbt sich der betroffene Bereich rot und zeigt ‼️. Das gilt für CPU, GPU, RAM, Akkutemperatur, Thermik und Steckdose. Die Schwellwerte lassen sich einstellen. |
-| **Fenster** | Lässt sich frei auf alle angeschlossenen Bildschirme ziehen. Die Position wird gespeichert. Wird ein Monitor abgesteckt, holt die App das Widget automatisch auf den Hauptbildschirm. |
+| **Fenster** | Liegt standardmäßig im **Hintergrund** auf dem Schreibtisch, hinter allen anderen Fenstern, wie ein Desktop-Widget. Alternativ „Normal“ oder „Immer im Vordergrund“ (Einstellungen → Allgemein → Ebene). Lässt sich frei auf alle angeschlossenen Bildschirme ziehen. Die Position wird gespeichert. Wird ein Monitor abgesteckt, holt die App das Widget automatisch auf den Hauptbildschirm. |
 | **Autostart** | Die App startet beim Anmelden automatisch. Das lässt sich in den Einstellungen abschalten. |
 | **Updates** | Die App prüft beim Start und danach alle 6 Stunden auf GitHub, ob es eine neue Version gibt. Unter Einstellungen → Updates installierst du sie mit **„Jetzt aktualisieren & neu starten“**. |
 
