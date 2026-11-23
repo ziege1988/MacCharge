@@ -43,14 +43,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: Widget
 
     private func setupWidget() {
-        let window = WidgetWindow()
+        let window = WidgetWindow(layout: settings.layout)
         let root = RootView(openSettings: { [weak self] in self?.openSettings() })
             .environmentObject(settings)
             .environmentObject(monitor)
             .environmentObject(charger)
             .environmentObject(updater)
+            .environmentObject(monitor.history)
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(origin: .zero, size: WidgetWindow.size)
+        hosting.frame = NSRect(origin: .zero, size: settings.layout.size)
+        hosting.autoresizingMask = [.width, .height]
+        hosting.appearance = NSAppearance(named: .darkAqua)
         window.contentView = hosting
         window.menu = contextMenu()
         hosting.menu = window.menu
@@ -67,6 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func toggleWidget() {
         guard let widget else { return }
         widget.isVisible ? widget.orderOut(nil) : widget.orderFrontRegardless()
+    }
+
+    @objc private func toggleLayout() {
+        settings.layout = settings.layout == .tall ? .bar : .tall
     }
 
     @objc private func resetWidgetPosition() {
@@ -101,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "Einstellungen …", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Widget ein-/ausblenden", action: #selector(toggleWidget), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Darstellung wechseln (Widget/Leiste)", action: #selector(toggleLayout), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Widget-Position zurücksetzen", action: #selector(resetWidgetPosition), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "MacCharge beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -126,6 +134,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.$alwaysOnTop.combineLatest(settings.$showOnAllSpaces)
             .dropFirst()
             .sink { [weak self] top, spaces in self?.widget?.applyBehavior(alwaysOnTop: top, allSpaces: spaces) }
+            .store(in: &cancellables)
+        settings.$layout
+            .dropFirst()
+            .removeDuplicates()
+            .sink { [weak self] layout in self?.widget?.apply(layout: layout) }
             .store(in: &cancellables)
         settings.$widgetOpacity
             .dropFirst()

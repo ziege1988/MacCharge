@@ -71,27 +71,27 @@ struct DashboardView: View {
                         detail: mem.map { "\(gb($0.usedBytes))/\(gb($0.totalBytes)) GB" })
     }
 
-    /// Kachel mit aktuellem Wert (in Ampelfarbe) und Balkendiagramm des Verlaufs.
+    /// Kachel mit aktuellem Wert (in Ampelfarbe); das Balkendiagramm hinterlegt die ganze Kachel.
     private func loadTile(title: String, icon: String, area: WarningArea, value: Double?,
                           history: [Double], critical: Double, detail: String?) -> some View {
         let level = value.map { Level.load($0, high: settings.loadHigh, critical: critical) } ?? .ok
-        return Tile(title: title, icon: icon, warning: monitor.warnings.contains(area)) {
+        let chart = LoadBarChart(values: history, high: settings.loadHigh, critical: critical)
+        return Tile(title: title, icon: icon, warning: monitor.warnings.contains(area), backdrop: AnyView(chart)) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value.map { String(format: "%.0f %%", $0) } ?? "n. v.")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
+                    .font(.system(size: 19, weight: .bold, design: .rounded).monospacedDigit())
                     .foregroundStyle(value == nil ? Theme.textSecondary : (level == .ok ? Theme.textPrimary : level.color))
+                    .shadow(color: .black.opacity(0.6), radius: 2)
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                if let detail {
-                    Text(detail)
-                        .font(.system(size: 8.5, weight: .medium).monospacedDigit())
-                        .foregroundStyle(Theme.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
             }
-            LoadBarChart(values: history, high: settings.loadHigh, critical: critical)
-                .frame(height: 22)
+            Text(detail ?? " ")
+                .font(.system(size: 8.5, weight: .medium).monospacedDigit())
+                .foregroundStyle(Theme.textSecondary)
+                .shadow(color: .black.opacity(0.6), radius: 2)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: 22, alignment: .top)
         }
     }
 
@@ -109,7 +109,10 @@ struct DashboardView: View {
         }()
         return Tile(title: "Thermik", icon: "thermometer.medium", warning: warn) {
             valueLine(label)
+                .foregroundStyle((state == .serious || state == .critical) ? Theme.warning
+                                 : (state == .fair ? Theme.orange : Theme.textPrimary))
             VStack(alignment: .leading, spacing: 4) {
+                Spacer(minLength: 0)
                 Meter(value: level, color: (state == .serious || state == .critical) ? Theme.warning
                                            : (state == .fair ? Theme.orange : Theme.accent))
                 Text(monitor.battery.temperatureC.map { String(format: "Akku %.1f °C", $0) } ?? " ")
@@ -122,8 +125,7 @@ struct DashboardView: View {
 
     private func valueLine(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
-            .foregroundStyle(Theme.textPrimary)
+            .font(.system(size: 19, weight: .bold, design: .rounded).monospacedDigit())
             .lineLimit(1)
             .minimumScaleFactor(0.7)
     }
@@ -137,6 +139,7 @@ struct DashboardView: View {
 
 struct BatteryCard: View {
     @EnvironmentObject var settings: AppSettings
+    @EnvironmentObject var history: BatteryHistory
     @EnvironmentObject var monitor: SystemMonitor
     @EnvironmentObject var charger: ChargeController
 
@@ -171,6 +174,19 @@ struct BatteryCard: View {
                     .foregroundStyle(warn || critical ? Theme.warning : Theme.textSecondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
+                HStack(spacing: 4) {
+                    Text("VERLAUF 24 H").font(.system(size: 8.5, weight: .semibold)).tracking(0.5)
+                        .foregroundStyle(Theme.textSecondary)
+                    Spacer(minLength: 4)
+                    Image(systemName: "powerplug.fill").font(.system(size: 8))
+                    Text(AdapterInfo.text(b)).font(.system(size: 9, weight: .medium).monospacedDigit())
+                }
+                .foregroundStyle(AdapterInfo.atLimit(b) ? Theme.orange : Theme.textSecondary)
+                .help(AdapterInfo.atLimit(b) ? "Netzteil arbeitet am Limit – evtl. zu schwach" : "Netzteil-Nennleistung und aktuelle Aufnahme")
+                .padding(.top, 2)
+                BatteryHistoryChart(samples: history.samples, events: history.switchEvents,
+                                    lower: settings.lowerLimit, upper: charger.effectiveUpperLimit)
+                    .frame(height: 34)
             }
         }
     }

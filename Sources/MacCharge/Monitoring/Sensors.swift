@@ -106,7 +106,8 @@ struct BatteryReading {
     var cycleCount: Int?
     var healthPercent: Double?         // aktuelle Maximalkapazität / Designkapazität
     var watts: Double?                 // + lädt, − entlädt
-    var adapterWatts: Int?
+    var adapterWatts: Int?             // Nennleistung des Netzteils
+    var inputWatts: Double?            // tatsächlich aufgenommene Leistung (Apple Silicon)
 }
 
 enum BatterySensor {
@@ -150,8 +151,12 @@ enum BatterySensor {
                     reading.watts = v.doubleValue / 1000 * amps
                 }
                 if let ext = dict["ExternalConnected"] as? Bool, !reading.hasBattery { reading.externalPower = ext }
-                if let adapter = dict["AdapterDetails"] as? [String: Any], let w = adapter["Watts"] as? NSNumber {
+                if let adapter = dict["AdapterDetails"] as? [String: Any], let w = adapter["Watts"] as? NSNumber, w.intValue > 0 {
                     reading.adapterWatts = w.intValue
+                }
+                if let telemetry = dict["PowerTelemetryData"] as? [String: Any],
+                   let mw = telemetry["SystemPowerIn"] as? NSNumber, mw.doubleValue > 0 {
+                    reading.inputWatts = mw.doubleValue / 1000
                 }
             }
         }

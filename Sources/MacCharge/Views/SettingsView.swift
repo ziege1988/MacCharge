@@ -164,6 +164,17 @@ private struct GeneralSettings: View {
 
     var body: some View {
         Form {
+            Section {
+                Picker("Darstellung", selection: $settings.layout) {
+                    ForEach(WidgetLayout.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.radioGroup)
+            } header: {
+                Text("Darstellung")
+            } footer: {
+                Text("„Leiste“ ist flach und breit (\(Int(WidgetLayout.bar.size.width)) × \(Int(WidgetLayout.bar.size.height)) pt) – ideal oben auf einem zweiten Bildschirm. Jede Darstellung merkt sich ihre eigene Position. Schnell wechseln: Rechtsklick auf das Widget.")
+                    .foregroundStyle(.secondary)
+            }
             Section("Start & Fenster") {
                 Toggle("Beim Anmelden automatisch starten", isOn: $settings.launchAtLogin)
                 Toggle("Widget immer im Vordergrund", isOn: $settings.alwaysOnTop)

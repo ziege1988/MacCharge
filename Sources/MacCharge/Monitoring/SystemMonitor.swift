@@ -27,6 +27,9 @@ final class SystemMonitor: ObservableObject {
     /// Steckdose nicht erreichbar / reagiert nicht.
     var plugFaultProvider: @MainActor () -> Bool = { false }
 
+    /// Akkuverlauf 24 h (eigenes ObservableObject, wird separat in die Views gereicht).
+    let history = BatteryHistory(demo: SystemMonitor.demoMode)
+
     private let cpuSensor = CPUSensor()
     private var timer: Timer?
     private var exceededSince: [WarningArea: Date] = [:]
@@ -51,6 +54,7 @@ final class SystemMonitor: ObservableObject {
         battery = BatterySensor.sample()
         thermalState = ProcessInfo.processInfo.thermalState
         if Self.demoMode { applyDemoValues() }
+        history.record(battery)
 
         if let cpu { cpuHistory = Array((cpuHistory + [cpu]).suffix(Self.historyLength)) }
         if let gpu { gpuHistory = Array((gpuHistory + [gpu]).suffix(Self.historyLength)) }
@@ -80,6 +84,8 @@ final class SystemMonitor: ObservableObject {
         battery.temperatureC = 31.5
         battery.healthPercent = 94
         battery.cycleCount = 212
+        battery.adapterWatts = low ? nil : 96
+        battery.inputWatts = low ? nil : 45.3
     }
 
     private func evaluateWarnings() {

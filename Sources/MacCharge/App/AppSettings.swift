@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import Combine
 
 enum PlugBackend: String, CaseIterable, Identifiable {
@@ -13,6 +14,29 @@ enum PlugBackend: String, CaseIterable, Identifiable {
         case .refossLocal: return "Refoss lokal (Open API)"
         }
     }
+}
+
+enum WidgetLayout: String, CaseIterable, Identifiable {
+    case tall   // kompaktes Hochformat
+    case bar    // flache, breite Leiste (z. B. oben am Zweitbildschirm)
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .tall: return "Hochformat (Widget)"
+        case .bar: return "Leiste (flach & breit)"
+        }
+    }
+
+    var size: CGSize {
+        switch self {
+        case .tall: return CGSize(width: 288, height: 516)
+        case .bar: return CGSize(width: 1010, height: 64)
+        }
+    }
+
+    var cornerRadius: CGFloat { self == .tall ? 20 : 14 }
 }
 
 /// Alle Einstellungen, persistent in UserDefaults.
@@ -45,6 +69,7 @@ final class AppSettings: ObservableObject {
     @Published var warnDelay: Double { didSet { d.set(warnDelay, forKey: "warnDelay") } }
 
     // MARK: Allgemein
+    @Published var layout: WidgetLayout { didSet { d.set(layout.rawValue, forKey: "layout") } }
     @Published var launchAtLogin: Bool { didSet { d.set(launchAtLogin, forKey: "launchAtLogin") } }
     @Published var alwaysOnTop: Bool { didSet { d.set(alwaysOnTop, forKey: "alwaysOnTop") } }
     @Published var showOnAllSpaces: Bool { didSet { d.set(showOnAllSpaces, forKey: "showOnAllSpaces") } }
@@ -72,6 +97,7 @@ final class AppSettings: ObservableObject {
             "batteryTempWarn": 45.0,
             "plugPowerWarn": 150.0,
             "warnDelay": 10.0,
+            "layout": WidgetLayout.tall.rawValue,
             "launchAtLogin": true,
             "alwaysOnTop": true,
             "showOnAllSpaces": true,
@@ -95,6 +121,7 @@ final class AppSettings: ObservableObject {
         batteryTempWarn = d.double(forKey: "batteryTempWarn")
         plugPowerWarn = d.double(forKey: "plugPowerWarn")
         warnDelay = d.double(forKey: "warnDelay")
+        layout = WidgetLayout(rawValue: d.string(forKey: "layout") ?? "") ?? .tall
         launchAtLogin = d.bool(forKey: "launchAtLogin")
         alwaysOnTop = d.bool(forKey: "alwaysOnTop")
         showOnAllSpaces = d.bool(forKey: "showOnAllSpaces")

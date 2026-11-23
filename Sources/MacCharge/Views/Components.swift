@@ -21,6 +21,9 @@ struct Tile<Content: View>: View {
     var warning: Bool = false
     /// false = reine Anzeige: Klicks gehen an die Ziehfläche, damit das Widget überall verschiebbar ist.
     var interactive: Bool = false
+    /// Optionales Diagramm, das die gesamte Kachel (randlos) hinterlegt.
+    var backdrop: AnyView? = nil
+    var padding: CGFloat = 10
     @ViewBuilder var content: () -> Content
     @State private var pulse = false
 
@@ -47,12 +50,16 @@ struct Tile<Content: View>: View {
             content()
                 .allowsHitTesting(interactive)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(padding)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(warning ? Theme.warning.opacity(0.13) : Theme.card)
+                if let backdrop {
+                    backdrop
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
                 WindowDragArea()
             }
         )
@@ -182,45 +189,138 @@ extension Theme {
 }
 
 /// Balkendiagramm des Verlaufs: jeder Balken in seiner Ampelfarbe.
+/// Füllt die gesamte verfügbare Fläche (randlos), neuester Wert rechts.
 struct LoadBarChart: View {
     let values: [Double]          // 0…100, ältester zuerst
     let high: Double
     let critical: Double
-    var bars: Int = 24            // ≈ 48 s bei 2-s-Takt
+    var bars: Int = 20            // = 40 s bei 2-s-Takt
+    var gap: CGFloat = 2
+    var dimmed: Double = 0.5      // Deckkraft älterer Balken (Hintergrund-Diagramm)
 
     var body: some View {
         GeometryReader { geo in
-            let gap: CGFloat = 1.5
             let barWidth = max(1, (geo.size.width - gap * CGFloat(bars - 1)) / CGFloat(bars))
             let recent = Array(values.suffix(bars))
             let padding = bars - recent.count
-            HStack(alignment: .bottom, spacing: gap) {
-                ForEach(0..<bars, id: \.self) { i in
-                    let value = i >= padding ? recent[i - padding] : nil
-                    RoundedRectangle(cornerRadius: 1, style: .continuous)
-                        .fill(value.map { Level.load($0, high: high, critical: critical).color } ?? Color.white.opacity(0.06))
-                        .opacity(value == nil ? 1 : (i == bars - 1 ? 1 : 0.85))
-                        .frame(width: barWidth,
-                               height: max(2, geo.size.height * CGFloat(min(max(value ?? 0, 0), 100)) / 100))
+            ZStack(alignment: .bottomLeading) {
+                guide(at: high, height: geo.size.height, color: Theme.orange)
+                guide(at: critical, height: geo.size.height, color: Theme.warning)
+                HStack(alignment: .bottom, spacing: gap) {
+                    ForEach(0..<bars, id: \.self) { i in
+                        let value: Double? = i >= padding ? recent[i - padding] : nil
+                        let color = value.map { Level.load($0, high: high, critical: critical).color } ?? .clear
+                        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                            .fill(LinearGradient(colors: [color, color.opacity(0.55)], startPoint: .top, endPoint: .bottom))
+                            .opacity(i == bars - 1 ? 0.95 : dimmed)
+                            .frame(width: barWidth,
+                                   height: max(value == nil ? 0 : 2,
+                                               geo.size.height * CGFloat(min(max(value ?? 0, 0), 100)) / 100))
+                    }
                 }
             }
             .frame(width: geo.size.width, height: geo.size.height, alignment: .bottomLeading)
-            .background(alignment: .bottom) {
-                // Hilfslinien für orange/rot
-                ZStack(alignment: .bottom) {
-                    guide(at: high, height: geo.size.height, color: Theme.orange)
-                    guide(at: critical, height: geo.size.height, color: Theme.warning)
-                }
-            }
         }
         .animation(.easeOut(duration: 0.3), value: values.last ?? 0)
     }
 
     private func guide(at value: Double, height: CGFloat, color: Color) -> some View {
         Rectangle()
-            .fill(color.opacity(0.25))
+            .fill(color.opacity(0.22))
             .frame(height: 0.5)
             .offset(y: -height * CGFloat(value) / 100)
+    }
+}
+
+/// Akkuverlauf der letzten 24 h mit Ladegrenzen und Schaltpunkten der Steckdose.
+struct BatteryHistoryChart: View {
+    let samples: [BatteryHistory.Sample]
+    let events: [(t: Date, on: Bool)]
+    let lower: Int
+    let upper: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            let size = geo.size
+            let now = Date()
+            let start = now.addingTimeInterval(-BatteryHistory.window)
+            let x: (Date) -> CGFloat = { CGFloat($0.timeIntervalSince(start) / BatteryHistory.window) * size.width }
+            let y: (Int) -> CGFloat = { size.height * (1 - CGFloat(min(max($0, 0), 100)) / 100) }
+            ZStack(alignment: .topLeading) {
+                // Zielbereich und Grenzen
+                Rectangle().fill(Theme.accent.opacity(0.06))
+                    .frame(height: max(0, y(lower) - y(upper)))
+                    .offset(y: y(upper))
+                ForEach([lower, upper], id: \.self) { limit in
+                    Path { p in
+                        p.move(to: CGPoint(x: 0, y: y(limit)))
+                        p.addLine(to: CGPoint(x: size.width, y: y(limit)))
+                    }
+                    .stroke(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+                }
+                // Verlauf (Unterbrechung bei Lücken > 10 min, z. B. Ruhezustand)
+                ForEach(Array(segments().enumerated()), id: \.offset) { _, segment in
+                    Path { p in
+                        guard let first = segment.first else { return }
+                        p.move(to: CGPoint(x: x(first.t), y: size.height))
+                        segment.forEach { p.addLine(to: CGPoint(x: x($0.t), y: y($0.p))) }
+                        p.addLine(to: CGPoint(x: x(segment.last!.t), y: size.height))
+                        p.closeSubpath()
+                    }
+                    .fill(LinearGradient(colors: [Theme.accent.opacity(0.28), Theme.accent.opacity(0.02)],
+                                         startPoint: .top, endPoint: .bottom))
+                    Path { p in
+                        guard let first = segment.first else { return }
+                        p.move(to: CGPoint(x: x(first.t), y: y(first.p)))
+                        segment.dropFirst().forEach { p.addLine(to: CGPoint(x: x($0.t), y: y($0.p))) }
+                    }
+                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.3, lineCap: .round, lineJoin: .round))
+                }
+                // Schaltpunkte der Steckdose: ▲ grün = Ein, ▼ grau = Aus
+                ForEach(Array(events.enumerated()), id: \.offset) { _, event in
+                    Image(systemName: event.on ? "arrowtriangle.up.fill" : "arrowtriangle.down.fill")
+                        .font(.system(size: 5.5))
+                        .foregroundStyle(event.on ? Theme.accent : Color.white.opacity(0.6))
+                        .position(x: x(event.t), y: event.on ? size.height - 3 : 3)
+                }
+                if samples.count < 2 {
+                    Text("Verlauf wird aufgezeichnet …")
+                        .font(.system(size: 9))
+                        .foregroundStyle(Theme.textSecondary)
+                        .frame(width: size.width, height: size.height)
+                }
+            }
+        }
+    }
+
+    private func segments() -> [[BatteryHistory.Sample]] {
+        var result: [[BatteryHistory.Sample]] = []
+        var current: [BatteryHistory.Sample] = []
+        for sample in samples {
+            if let last = current.last, sample.t.timeIntervalSince(last.t) > 600 {
+                result.append(current)
+                current = []
+            }
+            current.append(sample)
+        }
+        if !current.isEmpty { result.append(current) }
+        return result
+    }
+}
+
+/// Netzteil-Info, z. B. "Netzteil 96 W · liefert 45 W".
+enum AdapterInfo {
+    static func text(_ b: BatteryReading) -> String {
+        guard b.externalPower else { return "Kein Netzteil" }
+        var t = b.adapterWatts.map { "Netzteil \($0) W" } ?? "Netzteil"
+        if let input = b.inputWatts { t += String(format: " · liefert %.0f W", input) }
+        return t
+    }
+
+    /// Orange, wenn das Netzteil am Limit arbeitet (≥ 95 % der Nennleistung).
+    static func atLimit(_ b: BatteryReading) -> Bool {
+        guard b.externalPower, let rated = b.adapterWatts, rated > 0, let input = b.inputWatts else { return false }
+        return input >= Double(rated) * 0.95
     }
 }
 

@@ -1,14 +1,15 @@
 import AppKit
 
 /// Randloses, frei verschiebbares Widget-Fenster. Kann auf jeden angeschlossenen
-/// Bildschirm gezogen werden; die Position wird gespeichert und beim Start wiederhergestellt.
+/// Bildschirm gezogen werden. Die Position wird je Darstellung (Hochformat / Leiste)
+/// getrennt gespeichert und beim Start wiederhergestellt.
 final class WidgetWindow: NSPanel {
-    static let size = NSSize(width: 288, height: 476)
-    private static let originKey = "widgetOrigin"     // obere linke Ecke (x, y) in globalen Koordinaten
-    private static let screenKey = "widgetScreen"     // Name des Bildschirms (Information/Fallback)
+    private(set) var layout: WidgetLayout
+    private var isApplyingLayout = false
 
-    init() {
-        super.init(contentRect: NSRect(origin: .zero, size: Self.size),
+    init(layout: WidgetLayout) {
+        self.layout = layout
+        super.init(contentRect: NSRect(origin: .zero, size: layout.size),
                    styleMask: [.borderless, .nonactivatingPanel, .fullSizeContentView],
                    backing: .buffered, defer: false)
         isMovableByWindowBackground = false  // Verschieben übernimmt WindowDragArea (Buttons bleiben klickbar)
@@ -30,6 +31,11 @@ final class WidgetWindow: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
+    /// Hochformat: "widgetOrigin" (kompatibel zu 1.0), Leiste: "widgetOrigin.bar".
+    private func originKey(_ layout: WidgetLayout) -> String {
+        layout == .tall ? "widgetOrigin" : "widgetOrigin.\(layout.rawValue)"
+    }
+
     func applyBehavior(alwaysOnTop: Bool, allSpaces: Bool) {
         level = alwaysOnTop ? .floating : .normal
         var behavior: NSWindow.CollectionBehavior = [.fullScreenAuxiliary, .ignoresCycle]
@@ -37,18 +43,28 @@ final class WidgetWindow: NSPanel {
         collectionBehavior = behavior
     }
 
+    /// Wechselt die Darstellung: neue Größe an der für diese Darstellung gespeicherten Position.
+    func apply(layout newLayout: WidgetLayout) {
+        guard newLayout != layout else { return }
+        savePosition()
+        layout = newLayout
+        restorePosition()
+    }
+
     @objc private func savePosition() {
+        guard !isApplyingLayout else { return }
         let topLeft = NSPoint(x: frame.minX, y: frame.maxY)
-        UserDefaults.standard.set([topLeft.x, topLeft.y], forKey: Self.originKey)
-        UserDefaults.standard.set(screen?.localizedName, forKey: Self.screenKey)
+        UserDefaults.standard.set([topLeft.x, topLeft.y], forKey: originKey(layout))
     }
 
     private func restorePosition() {
-        if let values = UserDefaults.standard.array(forKey: Self.originKey) as? [Double], values.count == 2 {
-            let topLeft = NSPoint(x: values[0], y: values[1])
-            let rect = NSRect(x: topLeft.x, y: topLeft.y - Self.size.height, width: Self.size.width, height: Self.size.height)
+        isApplyingLayout = true
+        defer { isApplyingLayout = false }
+        let size = layout.size
+        if let values = UserDefaults.standard.array(forKey: originKey(layout)) as? [Double], values.count == 2 {
+            let rect = NSRect(x: values[0], y: values[1] - size.height, width: size.width, height: size.height)
             if isVisibleOnSomeScreen(rect) {
-                setFrame(rect, display: false)
+                setFrame(rect, display: true, animate: false)
                 return
             }
         }
@@ -68,7 +84,16 @@ final class WidgetWindow: NSPanel {
     private func placeDefault() {
         guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
         let vf = screen.visibleFrame
-        setFrameOrigin(NSPoint(x: vf.maxX - Self.size.width - 20, y: vf.maxY - Self.size.height - 20))
+        let size = layout.size
+        let origin: NSPoint
+        switch layout {
+        case .tall:
+            origin = NSPoint(x: vf.maxX - size.width - 20, y: vf.maxY - size.height - 20)
+        case .bar:
+            // oben mittig, direkt unter der Menüleiste
+            origin = NSPoint(x: vf.midX - size.width / 2, y: vf.maxY - size.height - 6)
+        }
+        setFrame(NSRect(origin: origin, size: size), display: true, animate: false)
     }
 
     @objc private func screensChanged() {
