@@ -45,8 +45,8 @@ jobs:
           X=$(( ${W%.*} - 360 ))
           defaults write io.github.ziege1988.maccharge warnDelay -float 2
           open --env MACCHARGE_DEMO=1 dist/MacCharge.app
-          sleep 1.2 && screencapture -x -R "$X,0,360,540" shots/1-splash.png
-          sleep 6 && screencapture -x -R "$X,0,360,540" shots/2-dashboard.png
+          sleep 1.2 && screencapture -x -R "$X,0,360,560" shots/1-splash.png
+          sleep 6 && screencapture -x -R "$X,0,360,560" shots/2-dashboard.png
           pgrep -x MacCharge && echo "App läuft"
           pkill -x MacCharge || true
           for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done

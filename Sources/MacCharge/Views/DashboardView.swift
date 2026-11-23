@@ -143,15 +143,16 @@ struct BatteryCard: View {
                     + Text(" %").font(.system(size: 16, weight: .semibold, design: .rounded))
                         .foregroundColor(Theme.textSecondary)
                     Spacer()
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(statusText(b)).font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(b.isCharging ? Theme.accent : Theme.textPrimary)
-                        Text(detailText(b)).font(.system(size: 9.5).monospacedDigit())
-                            .foregroundStyle(warn ? Theme.warning : Theme.textSecondary)
-                    }
+                    Text(statusText(b)).font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .foregroundStyle(b.isCharging ? Theme.accent : Theme.textPrimary)
+                        .lineLimit(1)
                 }
                 LimitBar(percent: b.percent, lower: settings.lowerLimit, upper: charger.effectiveUpperLimit,
                          charging: b.isCharging, warning: warn)
+                Text(detailText(b)).font(.system(size: 9.5).monospacedDigit())
+                    .foregroundStyle(warn ? Theme.warning : Theme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
     }
@@ -204,7 +205,7 @@ struct LimitBar: View {
             }
         }
         .frame(height: 10)
-        .padding(.bottom, 10)
+        .padding(.bottom, 8)
         .animation(.easeOut(duration: 0.5), value: percent)
     }
 
