@@ -41,11 +41,14 @@ jobs:
         continue-on-error: true
         run: |
           mkdir -p shots
+          W=$(osascript -l JavaScript -e 'ObjC.import("AppKit"); $.NSScreen.mainScreen.frame.size.width')
+          X=$(( ${W%.*} - 360 ))
           open dist/MacCharge.app
-          sleep 1.2 && screencapture -x shots/1-splash.png
-          sleep 4 && screencapture -x shots/2-dashboard.png
+          sleep 1.2 && screencapture -x -R "$X,0,360,540" shots/1-splash.png
+          sleep 4 && screencapture -x -R "$X,0,360,540" shots/2-dashboard.png
           pgrep -x MacCharge && echo "App läuft"
           pkill -x MacCharge || true
+          for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done
 
       - name: Screenshots hochladen
         if: "!startsWith(github.ref, 'refs/tags/v')"
