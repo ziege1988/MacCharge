@@ -72,11 +72,8 @@ Dafür werden Xcode oder die Command Line Tools benötigt (`xcode-select --insta
 ## Neue Version veröffentlichen (Updates verteilen)
 
 1. Versionsnummer in `VERSION` erhöhen, z. B. `1.1.0`.
-2. Committen und einen Tag pushen:
-   ```bash
-   git tag v1.1.0 && git push origin v1.1.0
-   ```
-3. GitHub Actions baut die App auf einem kostenlosen macOS-Runner und veröffentlicht automatisch ein Release mit der ZIP-Datei.
+2. Die Änderung nach `main` bringen (Commit bzw. Pull Request).
+3. GitHub Actions baut die App auf einem kostenlosen macOS-Runner. Ist die Version neu, veröffentlicht der Workflow automatisch das Release `v1.1.0` mit der ZIP-Datei. Alternativ startet ein Tag `v1.1.0` dasselbe.
 4. Alle installierten MacCharge-Apps zeigen das Update unter Einstellungen → Updates an. Ein grüner Punkt am Zahnrad im Widget weist darauf hin.
 
 ## Projektstruktur
