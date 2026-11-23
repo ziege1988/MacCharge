@@ -46,8 +46,13 @@ jobs:
           defaults write io.github.ziege1988.maccharge warnDelay -float 2
           open --env MACCHARGE_DEMO=1 dist/MacCharge.app
           sleep 1.2 && screencapture -x -R "$X,0,360,560" shots/1-splash.png
-          sleep 6 && screencapture -x -R "$X,0,360,560" shots/2-dashboard.png
+          sleep 16 && screencapture -x -R "$X,0,360,560" shots/2-dashboard.png
           pgrep -x MacCharge && echo "App läuft"
+          pkill -x MacCharge || true
+          sleep 1
+          open --env MACCHARGE_DEMO=low dist/MacCharge.app
+          sleep 6 && screencapture -x -R "$X,0,360,560" shots/3-akku-kritisch.png
+          sleep 0.55 && screencapture -x -R "$X,0,360,560" shots/4-akku-kritisch-blink.png
           pkill -x MacCharge || true
           for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done
 
