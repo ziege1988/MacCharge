@@ -2,7 +2,7 @@
 
 Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden des MacBooks über eine **Refoss-Smart-Steckdose** steuert, standardmäßig zwischen **20 %** und **85 %**. Die App ist komplett kostenlos: keine Cloud, kein Abo, kein Apple-Entwicklerkonto.
 
-<img src="Resources/Logo.png" width="128" alt="MacCharge Logo">
+<img src="docs/1-splash.png" width="300" alt="Startbildschirm"> <img src="docs/2-dashboard.png" width="300" alt="Dashboard mit CPU-Warnung">
 
 ## Funktionen
 
