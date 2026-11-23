@@ -44,23 +44,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupWidget() {
         let window = WidgetWindow(layout: settings.layout)
-        let root = RootView(openSettings: { [weak self] in self?.openSettings() })
+        window.contentView = makeHostingView(layout: settings.layout, splash: true)
+        window.menu = contextMenu()
+        window.contentView?.menu = window.menu
+        window.applyBehavior(alwaysOnTop: settings.alwaysOnTop, allSpaces: settings.showOnAllSpaces)
+        window.alphaValue = settings.widgetOpacity
+        window.orderFrontRegardless()
+        widget = window
+
+        // Nur für automatisierte Tests: Darstellung zur Laufzeit umschalten
+        if ProcessInfo.processInfo.environment["MACCHARGE_TEST_TOGGLE_LAYOUT"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.toggleLayout() }
+        }
+    }
+
+    /// Baut die SwiftUI-Ansicht für eine Darstellung. Die Fenstergröße bestimmt allein
+    /// WidgetWindow (sizingOptions = []), sonst würde SwiftUI das Fenster auf die alte Größe festnageln.
+    private func makeHostingView(layout: WidgetLayout, splash: Bool) -> NSView {
+        let root = RootView(layout: layout, showSplash: splash,
+                            openSettings: { [weak self] in self?.openSettings() })
             .environmentObject(settings)
             .environmentObject(monitor)
             .environmentObject(charger)
             .environmentObject(updater)
             .environmentObject(monitor.history)
         let hosting = NSHostingView(rootView: root)
-        hosting.frame = NSRect(origin: .zero, size: settings.layout.size)
+        hosting.sizingOptions = []
+        hosting.frame = NSRect(origin: .zero, size: layout.size)
         hosting.autoresizingMask = [.width, .height]
         hosting.appearance = NSAppearance(named: .darkAqua)
-        window.contentView = hosting
-        window.menu = contextMenu()
-        hosting.menu = window.menu
-        window.applyBehavior(alwaysOnTop: settings.alwaysOnTop, allSpaces: settings.showOnAllSpaces)
-        window.alphaValue = settings.widgetOpacity
-        window.orderFrontRegardless()
-        widget = window
+        return hosting
+    }
+
+    private func switchLayout(to layout: WidgetLayout) {
+        guard let widget, widget.layout != layout else { return }
+        let hosting = makeHostingView(layout: layout, splash: false)
+        hosting.menu = widget.menu
+        widget.contentView = hosting
+        widget.apply(layout: layout)
+        widget.orderFrontRegardless()
     }
 
     @objc func showWidget() {
@@ -138,7 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settings.$layout
             .dropFirst()
             .removeDuplicates()
-            .sink { [weak self] layout in self?.widget?.apply(layout: layout) }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] layout in self?.switchLayout(to: layout) }
             .store(in: &cancellables)
         settings.$widgetOpacity
             .dropFirst()

@@ -66,6 +66,14 @@ jobs:
           open --env MACCHARGE_DEMO=low dist/MacCharge.app
           sleep 6 && screencapture -x -R "$BX,0,1040,100" shots/6-leiste-kritisch.png
           pkill -x MacCharge || true
+          # 4) Umschalten zur Laufzeit: Leiste -> Hochformat -> Leiste (über das echte Umschalten)
+          open --env MACCHARGE_DEMO=1 --env MACCHARGE_TEST_TOGGLE_LAYOUT=1 dist/MacCharge.app
+          sleep 12 && screencapture -x -R "0,0,$W,620" shots/7-umgeschaltet-hochformat.png
+          pkill -x MacCharge || true; sleep 1
+          defaults write $DOM layout tall
+          open --env MACCHARGE_DEMO=1 --env MACCHARGE_TEST_TOGGLE_LAYOUT=1 dist/MacCharge.app
+          sleep 12 && screencapture -x -R "0,0,$W,620" shots/8-umgeschaltet-leiste.png
+          pkill -x MacCharge || true
           for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done
 
       - name: Screenshots hochladen

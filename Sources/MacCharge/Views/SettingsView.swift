@@ -77,12 +77,22 @@ private struct PlugSettings: View {
             switch settings.backend {
             case .shortcuts:
                 Section {
-                    TextField("Kurzbefehl „Einschalten“", text: $settings.shortcutOn)
-                    TextField("Kurzbefehl „Ausschalten“", text: $settings.shortcutOff)
+                    Picker("Art", selection: $settings.shortcutMode) {
+                        ForEach(ShortcutMode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.radioGroup)
+                    if settings.shortcutMode == .toggle {
+                        TextField("Name des Kurzbefehls", text: $settings.shortcutToggle)
+                    } else {
+                        TextField("Kurzbefehl „Einschalten“", text: $settings.shortcutOn)
+                        TextField("Kurzbefehl „Ausschalten“", text: $settings.shortcutOff)
+                    }
                 } header: {
                     Text("Apple Home (HomeKit)")
                 } footer: {
-                    Text("Lege in der Kurzbefehle-App zwei Kurzbefehle mit der Aktion „Zuhause steuern“ an, die deine Refoss-Steckdose ein- bzw. ausschalten, und benenne sie wie oben. Kostenlos, ohne Cloud-Konto.")
+                    Text(settings.shortcutMode == .toggle
+                         ? "Ein Kurzbefehl mit der Aktion „Zuhause steuern“ → Steckdose → Umschalten. MacCharge erkennt am Netzteil des Macs, ob gerade Strom fließt, und führt den Kurzbefehl nur aus, wenn wirklich umgeschaltet werden muss. Wichtig: Das Ladekabel muss dauerhaft im Mac stecken."
+                         : "Zwei Kurzbefehle mit der Aktion „Zuhause steuern“, die die Steckdose ein- bzw. ausschalten. Etwas robuster als Umschalten, da der Zielzustand eindeutig ist.")
                         .foregroundStyle(.secondary)
                 }
             case .refossLocal:

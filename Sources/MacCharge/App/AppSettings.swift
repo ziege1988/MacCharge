@@ -39,6 +39,20 @@ enum WidgetLayout: String, CaseIterable, Identifiable {
     var cornerRadius: CGFloat { self == .tall ? 20 : 14 }
 }
 
+enum ShortcutMode: String, CaseIterable, Identifiable {
+    case toggle    // ein Kurzbefehl, der die Steckdose umschaltet
+    case separate  // zwei Kurzbefehle: Ein / Aus
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .toggle: return "Ein Kurzbefehl (Umschalten)"
+        case .separate: return "Zwei Kurzbefehle (Ein / Aus)"
+        }
+    }
+}
+
 /// Alle Einstellungen, persistent in UserDefaults.
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -51,6 +65,8 @@ final class AppSettings: ObservableObject {
 
     // MARK: Steckdose
     @Published var backend: PlugBackend { didSet { d.set(backend.rawValue, forKey: "backend") } }
+    @Published var shortcutMode: ShortcutMode { didSet { d.set(shortcutMode.rawValue, forKey: "shortcutMode") } }
+    @Published var shortcutToggle: String { didSet { d.set(shortcutToggle, forKey: "shortcutToggle") } }
     @Published var shortcutOn: String { didSet { d.set(shortcutOn, forKey: "shortcutOn") } }
     @Published var shortcutOff: String { didSet { d.set(shortcutOff, forKey: "shortcutOff") } }
     @Published var refossHost: String { didSet { d.set(refossHost, forKey: "refossHost") } }
@@ -84,6 +100,8 @@ final class AppSettings: ObservableObject {
             "lowerLimit": 20,
             "upperLimit": 85,
             "backend": PlugBackend.shortcuts.rawValue,
+            "shortcutMode": ShortcutMode.toggle.rawValue,
+            "shortcutToggle": "MacCharge",
             "shortcutOn": "MacCharge Ein",
             "shortcutOff": "MacCharge Aus",
             "refossHost": "",
@@ -108,6 +126,8 @@ final class AppSettings: ObservableObject {
         lowerLimit = d.integer(forKey: "lowerLimit")
         upperLimit = d.integer(forKey: "upperLimit")
         backend = PlugBackend(rawValue: d.string(forKey: "backend") ?? "") ?? .shortcuts
+        shortcutMode = ShortcutMode(rawValue: d.string(forKey: "shortcutMode") ?? "") ?? .toggle
+        shortcutToggle = d.string(forKey: "shortcutToggle") ?? "MacCharge"
         shortcutOn = d.string(forKey: "shortcutOn") ?? "MacCharge Ein"
         shortcutOff = d.string(forKey: "shortcutOff") ?? "MacCharge Aus"
         refossHost = d.string(forKey: "refossHost") ?? ""

@@ -29,6 +29,9 @@ final class ChargeController: ObservableObject {
     private var pendingSince: Date?
     private var retries = 0
     private var busy = false
+    /// Nach endgültig fehlgeschlagenem Schalten: Automatik ruht, bis sich das Netzteilsignal
+    /// ändert oder manuell geschaltet wird (verhindert Dauer-Umschalten, z. B. bei abgezogenem Kabel).
+    @Published private(set) var faultLock: Bool?
 
     static let manualHoldMinutes: Double = 30
     private static let verifyAfter: TimeInterval = 15
@@ -42,6 +45,7 @@ final class ChargeController: ObservableObject {
     var effectiveUpperLimit: Int { fullChargeOnce ? 100 : settings.upperLimit }
 
     var isAutomationPaused: Bool {
+        if faultLock != nil { return true }
         if let until = manualHoldUntil, until > Date() { return true }
         return false
     }
@@ -56,26 +60,33 @@ final class ChargeController: ObservableObject {
     func makePlug() -> PlugController {
         switch settings.backend {
         case .shortcuts:
-            return ShortcutsPlug(onName: settings.shortcutOn, offName: settings.shortcutOff)
+            return ShortcutsPlug(onName: settings.shortcutOn, offName: settings.shortcutOff,
+                                 toggleName: isToggleMode ? settings.shortcutToggle : nil)
         case .refossLocal:
             return RefossPlug(host: settings.refossHost, switchID: settings.refossSwitchID,
                               user: settings.refossUser, password: settings.refossPassword)
         }
     }
 
+    /// Umschalt-Kurzbefehl: Zustand ist nur über das Netzteilsignal bekannt.
+    var isToggleMode: Bool { settings.backend == .shortcuts && settings.shortcutMode == .toggle }
+
     // MARK: Manuelle Bedienung
 
     func manualSwitch(_ on: Bool) {
+        faultLock = nil
         manualHoldUntil = Date().addingTimeInterval(Self.manualHoldMinutes * 60)
         Task { await send(on, reason: on ? "Manuell eingeschaltet" : "Manuell ausgeschaltet") }
     }
 
     func resumeAutomation() {
         manualHoldUntil = nil
+        faultLock = nil
         Task { await evaluate() }
     }
 
     func startFullChargeOnce() {
+        faultLock = nil
         fullChargeOnce = true
         manualHoldUntil = nil
         Task { await send(true, reason: "Einmalig auf 100 %") }
@@ -97,19 +108,29 @@ final class ChargeController: ObservableObject {
                 pendingTarget = nil; retries = 0
                 phase = .idle
             } else if Date().timeIntervalSince(since) > Self.verifyAfter {
-                if retries < Self.maxRetries {
+                // Umschalt-Kurzbefehl nie wiederholen – ein zweiter Aufruf würde zurückschalten
+                let maxRetries = isToggleMode ? 0 : Self.maxRetries
+                if retries < maxRetries {
                     retries += 1
-                    await send(target, reason: "Wiederholung \(retries)/\(Self.maxRetries)")
+                    await send(target, reason: "Wiederholung \(retries)/\(maxRetries)")
                     return
                 } else {
                     pendingTarget = nil; retries = 0
+                    faultLock = battery.externalPower
                     phase = .error(target ? "Netzteil liefert keinen Strom – Kabel/Steckdose prüfen"
                                           : "Steckdose hat nicht abgeschaltet")
                 }
             }
         }
 
-        guard settings.automationEnabled, battery.hasBattery, !isAutomationPaused, pendingTarget == nil else { return }
+        // Sperre aufheben, sobald sich das Netzteilsignal ändert (z. B. Kabel wieder eingesteckt)
+        if let lock = faultLock, lock != battery.externalPower {
+            faultLock = nil
+            if case .error = phase { phase = .idle }
+        }
+
+        guard settings.automationEnabled, battery.hasBattery, !isAutomationPaused,
+              pendingTarget == nil, faultLock == nil else { return }
 
         let upper = effectiveUpperLimit
         let lower = settings.lowerLimit
@@ -126,6 +147,12 @@ final class ChargeController: ObservableObject {
         if SystemMonitor.demoMode {
             // Demo-Modus schaltet niemals die echte Steckdose
             lastAction = "Demo · würde \(on ? "einschalten" : "ausschalten"): \(reason)"
+            return
+        }
+        // Umschalt-Modus: nur schalten, wenn der Ist-Zustand (Netzteil) vom Ziel abweicht
+        if isToggleMode && monitor.battery.externalPower == on {
+            lastAction = "\(Self.timeFormatter.string(from: Date())) · Strom ist bereits \(on ? "ein" : "aus")"
+            plugOn = on
             return
         }
         busy = true
@@ -172,9 +199,11 @@ final class ChargeController: ObservableObject {
             switch settings.backend {
             case .shortcuts:
                 let all = await ShortcutsPlug.availableShortcuts()
-                let missing = [settings.shortcutOn, settings.shortcutOff].filter { !all.contains($0) }
-                return missing.isEmpty ? "✅ Beide Kurzbefehle gefunden."
-                                       : "‼️ Nicht gefunden: \(missing.joined(separator: ", "))"
+                let names = isToggleMode ? [settings.shortcutToggle] : [settings.shortcutOn, settings.shortcutOff]
+                let missing = names.filter { !all.contains($0) }
+                if !missing.isEmpty { return "‼️ Nicht gefunden: \(missing.joined(separator: ", "))" }
+                return isToggleMode ? "✅ Kurzbefehl „\(settings.shortcutToggle)“ gefunden."
+                                    : "✅ Beide Kurzbefehle gefunden."
             case .refossLocal:
                 let plug = RefossPlug(host: settings.refossHost, switchID: settings.refossSwitchID,
                                       user: settings.refossUser, password: settings.refossPassword)

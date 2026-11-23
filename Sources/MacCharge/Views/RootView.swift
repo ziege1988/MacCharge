@@ -2,14 +2,20 @@ import SwiftUI
 
 /// Startet mit dem dunkelgrauen Splash (Logo + Version) und wechselt dann zum Dashboard.
 struct RootView: View {
+    /// Darstellung ist fest pro Ansicht; beim Umschalten baut AppDelegate eine neue Ansicht.
+    let layout: WidgetLayout
     let openSettings: () -> Void
-    @EnvironmentObject var settings: AppSettings
-    @State private var showSplash = true
+    @State private var showSplash: Bool
 
     static let splashDuration: Double = 2.2
 
+    init(layout: WidgetLayout, showSplash: Bool, openSettings: @escaping () -> Void) {
+        self.layout = layout
+        self.openSettings = openSettings
+        _showSplash = State(initialValue: showSplash)
+    }
+
     var body: some View {
-        let layout = settings.layout
         ZStack {
             if showSplash {
                 SplashView(layout: layout)
@@ -26,6 +32,7 @@ struct RootView: View {
         .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: layout.cornerRadius, style: .continuous).strokeBorder(Color.white.opacity(0.08)))
         .onAppear {
+            guard showSplash else { return }
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.splashDuration) {
                 withAnimation(.easeInOut(duration: 0.5)) { showSplash = false }
             }
