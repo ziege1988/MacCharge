@@ -53,9 +53,9 @@ enum MemorySensor {
         }
         guard result == KERN_SUCCESS else { return nil }
         let page = UInt64(vm_kernel_page_size)
-        let internal = UInt64(stats.internal_page_count)
+        let internalPages = UInt64(stats.internal_page_count)
         let purgeable = UInt64(stats.purgeable_count)
-        let appMemory = internal > purgeable ? internal - purgeable : 0
+        let appMemory = internalPages > purgeable ? internalPages - purgeable : 0
         let used = (appMemory + UInt64(stats.wire_count) + UInt64(stats.compressor_page_count)) * page
         return MemoryReading(usedBytes: used, totalBytes: ProcessInfo.processInfo.physicalMemory)
     }
