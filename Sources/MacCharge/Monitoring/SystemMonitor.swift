@@ -49,10 +49,28 @@ final class SystemMonitor: ObservableObject {
         memory = MemorySensor.sample()
         battery = BatterySensor.sample()
         thermalState = ProcessInfo.processInfo.thermalState
+        if Self.demoMode { applyDemoValues() }
 
         if let cpu { cpuHistory = Array((cpuHistory + [cpu]).suffix(Self.historyLength)) }
         if let gpu { gpuHistory = Array((gpuHistory + [gpu]).suffix(Self.historyLength)) }
         evaluateWarnings()
+    }
+
+    /// Demo-Modus (MACCHARGE_DEMO=1): simulierte Werte für Screenshots/Tests ohne Akku.
+    static let demoMode = ProcessInfo.processInfo.environment["MACCHARGE_DEMO"] == "1"
+
+    private func applyDemoValues() {
+        cpu = 93 + Double.random(in: 0...5)
+        gpu = 35 + Double.random(in: 0...20)
+        battery.hasBattery = true
+        battery.percent = 78
+        battery.isCharging = true
+        battery.externalPower = true
+        battery.minutesToFull = 42
+        battery.watts = 27.4
+        battery.temperatureC = 31.5
+        battery.healthPercent = 94
+        battery.cycleCount = 212
     }
 
     private func evaluateWarnings() {
