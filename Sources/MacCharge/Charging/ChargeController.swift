@@ -29,6 +29,7 @@ final class ChargeController: ObservableObject {
     private var pendingSince: Date?
     private var retries = 0
     private var busy = false
+    private var cancellables = Set<AnyCancellable>()
     /// Nach endgültig fehlgeschlagenem Schalten: Automatik ruht, bis sich das Netzteilsignal
     /// ändert oder manuell geschaltet wird (verhindert Dauer-Umschalten, z. B. bei abgezogenem Kabel).
     @Published private(set) var faultLock: Bool?
@@ -55,6 +56,32 @@ final class ChargeController: ObservableObject {
             Task { @MainActor in await self?.evaluate() }
         }
         Task { await evaluate() }
+
+        // Ändert der Nutzer Grenzen oder Automatik, gilt die neue Regel sofort:
+        // eine manuelle Pause bzw. Fehlersperre wird aufgehoben und neu ausgewertet.
+        Publishers.Merge3(settings.$upperLimit.dropFirst().map { _ in () },
+                          settings.$lowerLimit.dropFirst().map { _ in () },
+                          settings.$automationEnabled.dropFirst().filter { $0 }.map { _ in () })
+            .debounce(for: .seconds(1), scheduler: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self else { return }
+                self.manualHoldUntil = nil
+                self.faultLock = nil
+                if case .error = self.phase { self.phase = .idle }
+                Task { await self.evaluate() }
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Kurzer Klartext, was die Automatik als Nächstes tut (für die Statuszeile).
+    var nextActionHint: String {
+        let b = monitor.battery
+        guard settings.automationEnabled else { return "Automatik aus" }
+        guard b.hasBattery else { return "Kein Akku" }
+        if b.externalPower {
+            return "Strom aus bei ≥ \(effectiveUpperLimit) % · jetzt \(b.percent) %"
+        }
+        return "Strom ein bei ≤ \(settings.lowerLimit) % · jetzt \(b.percent) %"
     }
 
     func makePlug() -> PlugController {

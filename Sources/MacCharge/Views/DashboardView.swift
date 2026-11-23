@@ -312,7 +312,8 @@ struct ChargeControlCard: View {
                     let mins = Int(until.timeIntervalSinceNow / 60) + 1
                     return "Automatik pausiert (manuell) · \(mins) min"
                 }
-                var t = charger.lastAction
+                // Statt der letzten Aktion zeigen, was als Nächstes passiert (nachvollziehbarer)
+                var t = charger.nextActionHint
                 if let p = charger.plugPower { t += String(format: " · %.0f W", p) }
                 return t
             }
@@ -321,6 +322,7 @@ struct ChargeControlCard: View {
         HStack(spacing: 4) {
             Text(text)
                 .font(.system(size: 9.5).monospacedDigit())
+                .help("Letzte Aktion: \(charger.lastAction)")
                 .foregroundStyle(isError ? Theme.warning : Theme.textSecondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
