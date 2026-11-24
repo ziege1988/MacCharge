@@ -143,8 +143,15 @@ struct BarDashboardView: View {
                     .controlSize(.mini)
                     .tint(Theme.accent)
                     .help("Ladeautomatik")
-                IconButton(icon: "bolt.fill", help: "Strom ein (pausiert Automatik 30 min)") { charger.manualSwitch(true) }
-                IconButton(icon: "bolt.slash.fill", help: "Strom aus (pausiert Automatik 30 min)") { charger.manualSwitch(false) }
+                let powered = PowerIndicator.isOn(monitor)
+                IconButton(icon: "bolt.fill",
+                           help: powered ? "Netzbetrieb – Strom fließt" : "Strom ein (pausiert Automatik 30 min)",
+                           highlighted: powered, activeColor: PowerIndicator.onColor,
+                           pulsing: PowerIndicator.switching(to: true, charger)) { charger.manualSwitch(true) }
+                IconButton(icon: "bolt.slash.fill",
+                           help: !powered ? "Akkubetrieb – kein Strom" : "Strom aus (pausiert Automatik 30 min)",
+                           highlighted: !powered, activeColor: PowerIndicator.offColor,
+                           pulsing: PowerIndicator.switching(to: false, charger)) { charger.manualSwitch(false) }
                 IconButton(icon: "battery.100.bolt", help: "Einmalig auf 100 % laden",
                            highlighted: charger.fullChargeOnce) { charger.startFullChargeOnce() }
                 IconButton(icon: "gearshape.fill", help: updater.updateAvailable ? "Update verfügbar" : "Einstellungen",
@@ -171,6 +178,8 @@ struct IconButton: View {
     let icon: String
     let help: String
     var highlighted = false
+    var activeColor: Color = Theme.accent
+    var pulsing = false
     var badge = false
     let action: () -> Void
     @State private var hover = false
@@ -183,8 +192,10 @@ struct IconButton: View {
                 .foregroundStyle(highlighted ? Color.black : Theme.textPrimary)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(highlighted ? Theme.accent : Color.white.opacity(hover ? 0.14 : 0.07))
+                        .fill(highlighted ? activeColor : Color.white.opacity(hover ? 0.14 : 0.07))
                 )
+                .shadow(color: highlighted ? activeColor.opacity(0.55) : .clear, radius: 5)
+                .modifier(Pulse(active: pulsing))
                 .overlay(alignment: .topTrailing) {
                     if badge { Circle().fill(Theme.accent).frame(width: 6, height: 6).offset(x: 1, y: -1) }
                 }
