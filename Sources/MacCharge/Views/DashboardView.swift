@@ -293,8 +293,15 @@ struct ChargeControlCard: View {
                 .tint(Theme.accent)
             }
             HStack(spacing: 6) {
-                ControlButton(title: "Ein", icon: "bolt.fill") { charger.manualSwitch(true) }
-                ControlButton(title: "Aus", icon: "bolt.slash.fill") { charger.manualSwitch(false) }
+                let powered = PowerIndicator.isOn(monitor)
+                ControlButton(title: "Ein", icon: "bolt.fill", highlighted: powered,
+                              activeColor: PowerIndicator.onColor,
+                              pulsing: PowerIndicator.switching(to: true, charger)) { charger.manualSwitch(true) }
+                    .help(powered ? "Netzbetrieb – Strom fließt" : "Strom einschalten (pausiert Automatik 30 min)")
+                ControlButton(title: "Aus", icon: "bolt.slash.fill", highlighted: !powered,
+                              activeColor: PowerIndicator.offColor,
+                              pulsing: PowerIndicator.switching(to: false, charger)) { charger.manualSwitch(false) }
+                    .help(!powered ? "Akkubetrieb – kein Strom" : "Strom ausschalten (pausiert Automatik 30 min)")
                 ControlButton(title: charger.fullChargeOnce ? "100 % …" : "100 %", icon: "battery.100.bolt",
                               highlighted: charger.fullChargeOnce) { charger.startFullChargeOnce() }
             }
@@ -342,6 +349,10 @@ struct ControlButton: View {
     let title: String
     let icon: String
     var highlighted = false
+    /// Farbe, in der der Button leuchtet, wenn er aktiv ist.
+    var activeColor: Color = Theme.accent
+    /// Pulsiert, während dieser Zustand gerade geschaltet wird.
+    var pulsing = false
     let action: () -> Void
     @State private var hover = false
 
@@ -356,10 +367,45 @@ struct ControlButton: View {
             .foregroundStyle(highlighted ? Color.black : Theme.textPrimary)
             .background(
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(highlighted ? Theme.accent : Color.white.opacity(hover ? 0.12 : 0.07))
+                    .fill(highlighted ? activeColor : Color.white.opacity(hover ? 0.12 : 0.07))
             )
+            .shadow(color: highlighted ? activeColor.opacity(0.55) : .clear, radius: 6)
+            .modifier(Pulse(active: pulsing))
         }
         .buttonStyle(.plain)
         .onHover { hover = $0 }
+        .animation(.easeInOut(duration: 0.3), value: highlighted)
+    }
+}
+
+/// Pulsieren (z. B. während die Steckdose schaltet).
+struct Pulse: ViewModifier {
+    let active: Bool
+    @State private var dim = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(active && dim ? 0.45 : 1)
+            .onChange(of: active) { on in
+                if on {
+                    withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) { dim = true }
+                } else {
+                    withAnimation(.default) { dim = false }
+                }
+            }
+    }
+}
+
+/// Leuchtzustand der Ein/Aus-Buttons: zeigt die tatsächliche Betriebsart des Macs
+/// (Netzteil liefert Strom = „Ein“ leuchtet grün, Akkubetrieb = „Aus“ leuchtet weiß).
+enum PowerIndicator {
+    static let onColor = Theme.accent
+    static let offColor = Color.white.opacity(0.88)
+
+    @MainActor static func isOn(_ monitor: SystemMonitor) -> Bool { monitor.battery.externalPower }
+
+    @MainActor static func switching(to target: Bool, _ charger: ChargeController) -> Bool {
+        if case .switching(let t) = charger.phase { return t == target }
+        return false
     }
 }
