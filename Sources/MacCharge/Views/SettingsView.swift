@@ -49,6 +49,10 @@ private struct ChargingSettings: View {
             Section {
                 Toggle("Beim Herunterfahren, Neustart und Abmelden Strom ausschalten", isOn: $settings.offOnShutdown)
                 Toggle("Im Ruhezustand Strom ausschalten", isOn: $settings.offOnSleep)
+                Button("Abschalten wie beim Herunterfahren testen") {
+                    Task { await charger.switchOffForPowerEvent(reason: "Test Herunterfahren", timeout: 20) }
+                }
+                .help("Führt genau den Abschaltweg aus, der beim Herunterfahren läuft – ohne den Mac auszuschalten.")
             } header: {
                 Text("Herunterfahren & Ruhezustand")
             } footer: {
@@ -203,6 +207,20 @@ private struct GeneralSettings: View {
                 LabeledContent("Deckkraft") {
                     Slider(value: $settings.widgetOpacity, in: 0.5...1.0).frame(width: 220)
                 }
+            }
+            Section {
+                HStack {
+                    Button("Protokoll anzeigen") { NSWorkspace.shared.open(Log.fileURL) }
+                    Button("Letzte Einträge kopieren") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(Log.tail(), forType: .string)
+                    }
+                }
+            } header: {
+                Text("Protokoll")
+            } footer: {
+                Text("Alle Schaltvorgänge, Kurzbefehl-Aufrufe sowie Herunterfahren/Ruhezustand werden in ~/Library/Logs/MacCharge/MacCharge.log festgehalten – hilfreich bei der Fehlersuche.")
+                    .foregroundStyle(.secondary)
             }
             Section {
                 Text("Das Widget lässt sich mit der Maus frei auf jeden angeschlossenen Bildschirm ziehen. Die Position wird gespeichert und beim nächsten Start wiederhergestellt. Rechtsklick auf das Widget oder das Menüleisten-Symbol öffnet weitere Optionen.")

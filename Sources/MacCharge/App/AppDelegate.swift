@@ -14,8 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
     private let powerEvents = PowerEvents()
-    /// macOS fährt herunter / startet neu / meldet ab (nicht: MacCharge wird nur beendet).
-    private var systemPowerOff = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings.normalizeLimits()
@@ -41,16 +39,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Herunterfahren & Ruhezustand
 
+    /// Einmaliger Abschaltvorgang beim Herunterfahren (wird von allen Signalen gemeinsam genutzt,
+    /// damit ein Umschalt-Kurzbefehl nie doppelt ausgeführt wird).
+    private var shutdownTask: Task<Void, Never>?
+
     private func setupPowerEvents() {
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification,
-                                                          object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.systemPowerOff = true }
-        }
+        Log.info("MacCharge \(AppInfo.version) gestartet")
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(willPowerOff(_:)),
+                                                          name: NSWorkspace.willPowerOffNotification, object: nil)
 
         powerEvents.onWillSleep = { [weak self] done in
             Task { @MainActor in
                 guard let self else { done(); return }
                 let b = self.monitor.battery
+                Log.info("Ruhezustand angekündigt (Netzbetrieb=\(b.externalPower), Akku \(b.percent) %)")
                 // Nicht abschalten, wenn der Akku ohnehin niedrig ist – sonst wacht man mit leerem Akku auf
                 if self.settings.offOnSleep, b.externalPower, b.percent > self.settings.lowerLimit {
                     await self.charger.switchOffForPowerEvent(reason: "Ruhezustand → Strom aus", timeout: 15)
@@ -59,19 +61,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         powerEvents.onDidWake = { [weak self] in
-            Task { @MainActor in self?.charger.didWake() }
+            Task { @MainActor in
+                Log.info("Aufgewacht – Automatik prüft neu")
+                self?.charger.didWake()
+            }
         }
         powerEvents.start()
     }
 
+    /// Erstes Signal beim Herunterfahren/Neustart/Abmelden: sofort abschalten, solange
+    /// WLAN, Home-Dienste und Kurzbefehle noch laufen.
+    @objc private func willPowerOff(_ note: Notification) {
+        Log.info("macOS meldet: Herunterfahren / Neustart / Abmelden")
+        startShutdownSwitchOff(trigger: "Herunterfahren")
+    }
+
+    private func startShutdownSwitchOff(trigger: String) {
+        guard shutdownTask == nil else { return }
+        guard settings.offOnShutdown else {
+            Log.info("Abschalten beim Herunterfahren ist in den Einstellungen deaktiviert")
+            shutdownTask = Task {}
+            return
+        }
+        shutdownTask = Task { @MainActor in
+            await self.charger.switchOffForPowerEvent(reason: "\(trigger) → Strom aus", timeout: 20)
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        let reason = Self.quitReason()
+        Log.info("Beenden angefordert (Grund: \(reason ?? "MacCharge beenden"))")
         // Nur beim Herunterfahren/Neustart/Abmelden – nicht beim normalen Beenden oder bei Updates
-        guard systemPowerOff, settings.offOnShutdown, monitor.battery.externalPower else { return .terminateNow }
+        if reason != nil { startShutdownSwitchOff(trigger: reason!) }
+        guard let task = shutdownTask else { return .terminateNow }
         Task { @MainActor in
-            await charger.switchOffForPowerEvent(reason: "Herunterfahren → Strom aus", timeout: 10)
+            await task.value
+            Log.info("Bereit zum Beenden")
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
+    }
+
+    /// Liest aus der Quit-Anfrage von macOS, ob heruntergefahren/neu gestartet/abgemeldet wird.
+    private static func quitReason() -> String? {
+        func code(_ s: String) -> OSType { s.utf8.reduce(0) { ($0 << 8) | OSType($1) } }
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              let value = event.attributeDescriptor(forKeyword: code("why?"))?.enumCodeValue else { return nil }
+        switch value {
+        case code("shut"): return "Herunterfahren"
+        case code("rest"): return "Neustart"
+        case code("rlgo"), code("logo"): return "Abmelden"
+        default: return nil
+        }
+    }
+
+    /// Sicherer Weg: erst Strom aus (bestätigt), dann den Mac über macOS herunterfahren.
+    @objc private func shutDownWithPowerOff() {
+        Log.info("„Strom aus & Mac ausschalten“ gewählt")
+        shutdownTask = Task { @MainActor in
+            await self.charger.switchOffForPowerEvent(reason: "Ausschalten über MacCharge → Strom aus", timeout: 20)
+        }
+        Task { @MainActor in
+            await self.shutdownTask?.value
+            var error: NSDictionary?
+            NSAppleScript(source: "tell application \"System Events\" to shut down")?.executeAndReturnError(&error)
+            if let error {
+                Log.info("Herunterfahren fehlgeschlagen: \(error)")
+                let alert = NSAlert()
+                alert.messageText = "Der Mac konnte nicht heruntergefahren werden"
+                alert.informativeText = "Bitte MacCharge unter Systemeinstellungen → Datenschutz & Sicherheit → Automation erlauben, „System Events“ zu steuern. Die Steckdose wurde bereits abgeschaltet."
+                NSApp.activate(ignoringOtherApps: true)
+                alert.runModal()
+                self.shutdownTask = nil
+            }
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -171,6 +234,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Widget ein-/ausblenden", action: #selector(toggleWidget), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Darstellung wechseln (Widget/Leiste)", action: #selector(toggleLayout), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Widget-Position zurücksetzen", action: #selector(resetWidgetPosition), keyEquivalent: "").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Strom aus & Mac ausschalten …", action: #selector(shutDownWithPowerOff), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "MacCharge beenden", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         return menu

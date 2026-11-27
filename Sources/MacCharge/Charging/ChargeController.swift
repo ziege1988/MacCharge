@@ -227,7 +227,13 @@ final class ChargeController: ObservableObject {
     /// Gibt true zurück, wenn ein Schaltbefehl gesendet wurde.
     @discardableResult
     func switchOffForPowerEvent(reason: String, timeout: TimeInterval) async -> Bool {
-        guard !SystemMonitor.demoMode, monitor.battery.externalPower else { return false }
+        let b = monitor.battery
+        Log.info("\(reason): Netzbetrieb=\(b.externalPower), Akku \(b.percent) %, Modus \(isToggleMode ? "Umschalten" : "Ein/Aus")")
+        guard !SystemMonitor.demoMode else { return false }
+        guard b.externalPower else {
+            Log.info("\(reason): kein Netzbetrieb – nichts zu tun")
+            return false
+        }
         let plug = makePlug()
         let finished = await withTaskGroup(of: Bool.self) { group -> Bool in
             group.addTask {
