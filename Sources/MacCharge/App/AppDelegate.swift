@@ -221,11 +221,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "MacCharge Einstellungen"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
-            window.center()
             settingsWindow = window
         }
+        if let window = settingsWindow { centerOnActiveScreen(window) }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    /// Setzt ein Fenster exakt in die Mitte des Bildschirms, auf dem sich gerade der Mauszeiger
+    /// befindet (also dort, wo man auf das Zahnrad geklickt hat) – bei jedem Öffnen.
+    private func centerOnActiveScreen(_ window: NSWindow) {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens.first
+        guard let vf = screen?.visibleFrame else { window.center(); return }
+        let size = window.frame.size
+        window.setFrameOrigin(NSPoint(x: (vf.midX - size.width / 2).rounded(),
+                                      y: (vf.midY - size.height / 2).rounded()))
     }
 
     // MARK: Menü
