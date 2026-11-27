@@ -88,6 +88,10 @@ jobs:
           open --env MACCHARGE_DEMO=1 dist/MacCharge.app; sleep 5
           screencapture -x -R "$(( W - 300 )),$(( H - 140 )),300,140" shots/10-power-widget.png
           pkill -x MacCharge || true; sleep 1
+          # Einstellungen müssen mittig öffnen
+          open --env MACCHARGE_DEMO=1 --env MACCHARGE_TEST_OPEN_SETTINGS=1 dist/MacCharge.app; sleep 6
+          screencapture -x shots/11-einstellungen.png
+          pkill -x MacCharge || true; sleep 1
           # Normales Beenden darf NICHT als Herunterfahren gelten
           open --env MACCHARGE_DEMO=1 dist/MacCharge.app; sleep 5
           osascript -e 'tell application "MacCharge" to quit' || true; sleep 3

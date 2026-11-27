@@ -125,6 +125,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget = window
 
         // Nur für automatisierte Tests: Darstellung zur Laufzeit umschalten
+        if ProcessInfo.processInfo.environment["MACCHARGE_TEST_OPEN_SETTINGS"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.openSettings() }
+        }
         if ProcessInfo.processInfo.environment["MACCHARGE_TEST_TOGGLE_LAYOUT"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.toggleLayout() }
         }
@@ -221,11 +224,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "MacCharge Einstellungen"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
-            window.center()
             settingsWindow = window
         }
+        guard let window = settingsWindow else { return }
+        // Erst die echte Größe herstellen (SwiftUI legt sie sonst erst nach dem Anzeigen fest) …
+        if let view = window.contentViewController?.view {
+            view.layoutSubtreeIfNeeded()
+            let fitting = view.fittingSize
+            if fitting.width > 0, fitting.height > 0 { window.setContentSize(fitting) }
+        }
+        // … dann zentrieren, anzeigen und nach dem ersten Layout nochmals exakt zentrieren.
+        centerOnActiveScreen(window)
         NSApp.activate(ignoringOtherApps: true)
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        window.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let window else { return }
+            self?.centerOnActiveScreen(window)
+        }
+    }
+
+    /// Setzt ein Fenster exakt in die Mitte des Bildschirms, auf dem sich gerade der Mauszeiger
+    /// befindet (also dort, wo man auf das Zahnrad geklickt hat) – bei jedem Öffnen.
+    private func centerOnActiveScreen(_ window: NSWindow) {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { NSMouseInRect(mouse, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens.first
+        guard let vf = screen?.visibleFrame else { window.center(); return }
+        let size = window.frame.size
+        window.setFrameOrigin(NSPoint(x: (vf.midX - size.width / 2).rounded(),
+                                      y: (vf.midY - size.height / 2).rounded()))
     }
 
     // MARK: Menü
