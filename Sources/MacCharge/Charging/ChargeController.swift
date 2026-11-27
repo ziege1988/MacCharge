@@ -220,6 +220,40 @@ final class ChargeController: ObservableObject {
         }
     }
 
+    // MARK: Herunterfahren / Ruhezustand
+
+    /// Schaltet den Strom vor dem Herunterfahren bzw. Einschlafen ab – ohne Verifikation
+    /// (danach läuft MacCharge nicht mehr) und mit Zeitlimit, damit macOS nicht hängt.
+    /// Gibt true zurück, wenn ein Schaltbefehl gesendet wurde.
+    @discardableResult
+    func switchOffForPowerEvent(reason: String, timeout: TimeInterval) async -> Bool {
+        guard !SystemMonitor.demoMode, monitor.battery.externalPower else { return false }
+        let plug = makePlug()
+        let finished = await withTaskGroup(of: Bool.self) { group -> Bool in
+            group.addTask {
+                do { try await plug.setPower(false); return true } catch { return false }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                return false
+            }
+            let first = await group.next() ?? false
+            group.cancelAll()
+            return first
+        }
+        plugOn = false
+        lastAction = "\(Self.timeFormatter.string(from: Date())) · \(reason)\(finished ? "" : " (ohne Bestätigung)")"
+        Log.info("\(reason): Strom aus gesendet (bestätigt: \(finished))")
+        return true
+    }
+
+    /// Nach dem Aufwachen sofort neu bewerten (z. B. Akku im Schlaf gesunken).
+    func didWake() {
+        pendingTarget = nil
+        retries = 0
+        Task { await evaluate() }
+    }
+
     /// Verbindungstest aus den Einstellungen.
     func testConnection() async -> String {
         do {

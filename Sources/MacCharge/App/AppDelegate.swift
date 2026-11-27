@@ -13,6 +13,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: NSWindow?
     private var statusItem: NSStatusItem?
     private var cancellables = Set<AnyCancellable>()
+    private let powerEvents = PowerEvents()
+    /// macOS fährt herunter / startet neu / meldet ab (nicht: MacCharge wird nur beendet).
+    private var systemPowerOff = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         settings.normalizeLimits()
@@ -33,6 +36,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupWidget()
         setupStatusItem()
         observeSettings()
+        setupPowerEvents()
+    }
+
+    // MARK: Herunterfahren & Ruhezustand
+
+    private func setupPowerEvents() {
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification,
+                                                          object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.systemPowerOff = true }
+        }
+
+        powerEvents.onWillSleep = { [weak self] done in
+            Task { @MainActor in
+                guard let self else { done(); return }
+                let b = self.monitor.battery
+                // Nicht abschalten, wenn der Akku ohnehin niedrig ist – sonst wacht man mit leerem Akku auf
+                if self.settings.offOnSleep, b.externalPower, b.percent > self.settings.lowerLimit {
+                    await self.charger.switchOffForPowerEvent(reason: "Ruhezustand → Strom aus", timeout: 15)
+                }
+                done()
+            }
+        }
+        powerEvents.onDidWake = { [weak self] in
+            Task { @MainActor in self?.charger.didWake() }
+        }
+        powerEvents.start()
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Nur beim Herunterfahren/Neustart/Abmelden – nicht beim normalen Beenden oder bei Updates
+        guard systemPowerOff, settings.offOnShutdown, monitor.battery.externalPower else { return .terminateNow }
+        Task { @MainActor in
+            await charger.switchOffForPowerEvent(reason: "Herunterfahren → Strom aus", timeout: 10)
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
