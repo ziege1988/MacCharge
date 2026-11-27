@@ -125,6 +125,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget = window
 
         // Nur für automatisierte Tests: Darstellung zur Laufzeit umschalten
+        if ProcessInfo.processInfo.environment["MACCHARGE_TEST_OPEN_SETTINGS"] == "1" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.openSettings() }
+        }
         if ProcessInfo.processInfo.environment["MACCHARGE_TEST_TOGGLE_LAYOUT"] == "1" {
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in self?.toggleLayout() }
         }
