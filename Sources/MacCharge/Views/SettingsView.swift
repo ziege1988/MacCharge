@@ -46,6 +46,15 @@ private struct ChargingSettings: View {
                 Text("Erreicht der Akku die obere Grenze, wird die Steckdose ausgeschaltet. Fällt er auf die untere Grenze, wird sie wieder eingeschaltet. Dazwischen wird nicht geschaltet. Empfehlung für die Akkulebensdauer: 20–80 %.")
                     .foregroundStyle(.secondary)
             }
+            Section {
+                Toggle("Beim Herunterfahren, Neustart und Abmelden Strom ausschalten", isOn: $settings.offOnShutdown)
+                Toggle("Im Ruhezustand Strom ausschalten", isOn: $settings.offOnSleep)
+            } header: {
+                Text("Herunterfahren & Ruhezustand")
+            } footer: {
+                Text("Läuft gerade Netzbetrieb, schaltet MacCharge die Steckdose ab, bevor der Mac ausgeht bzw. einschläft – so lädt er nicht unkontrolliert weiter. Im Ruhezustand nur, wenn der Akku über der unteren Grenze liegt. Nach dem Aufwachen bzw. nächsten Start prüft die Automatik sofort neu.")
+                    .foregroundStyle(.secondary)
+            }
             Section("Aktionen") {
                 HStack {
                     Button("Jetzt prüfen & schalten") { Task { await charger.evaluate() } }

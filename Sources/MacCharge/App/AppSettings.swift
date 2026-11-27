@@ -76,6 +76,10 @@ final class AppSettings: ObservableObject {
 
     // MARK: Laden
     @Published var automationEnabled: Bool { didSet { d.set(automationEnabled, forKey: "automationEnabled") } }
+    /// Beim Herunterfahren, Neustarten oder Abmelden Strom ausschalten.
+    @Published var offOnShutdown: Bool { didSet { d.set(offOnShutdown, forKey: "offOnShutdown") } }
+    /// Beim Ruhezustand Strom ausschalten (nur oberhalb der unteren Grenze).
+    @Published var offOnSleep: Bool { didSet { d.set(offOnSleep, forKey: "offOnSleep") } }
     @Published var lowerLimit: Int { didSet { d.set(lowerLimit, forKey: "lowerLimit") } }
     @Published var upperLimit: Int { didSet { d.set(upperLimit, forKey: "upperLimit") } }
 
@@ -113,6 +117,8 @@ final class AppSettings: ObservableObject {
     private init() {
         d.register(defaults: [
             "automationEnabled": true,
+            "offOnShutdown": true,
+            "offOnSleep": true,
             "lowerLimit": 20,
             "upperLimit": 85,
             "backend": PlugBackend.shortcuts.rawValue,
@@ -139,6 +145,8 @@ final class AppSettings: ObservableObject {
             "autoCheckUpdates": true,
         ])
         automationEnabled = d.bool(forKey: "automationEnabled")
+        offOnShutdown = d.bool(forKey: "offOnShutdown")
+        offOnSleep = d.bool(forKey: "offOnSleep")
         lowerLimit = d.integer(forKey: "lowerLimit")
         upperLimit = d.integer(forKey: "upperLimit")
         backend = PlugBackend(rawValue: d.string(forKey: "backend") ?? "") ?? .shortcuts
