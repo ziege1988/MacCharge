@@ -226,9 +226,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.isReleasedWhenClosed = false
             settingsWindow = window
         }
-        if let window = settingsWindow { centerOnActiveScreen(window) }
+        guard let window = settingsWindow else { return }
+        // Erst die echte Größe herstellen (SwiftUI legt sie sonst erst nach dem Anzeigen fest) …
+        if let view = window.contentViewController?.view {
+            view.layoutSubtreeIfNeeded()
+            let fitting = view.fittingSize
+            if fitting.width > 0, fitting.height > 0 { window.setContentSize(fitting) }
+        }
+        // … dann zentrieren, anzeigen und nach dem ersten Layout nochmals exakt zentrieren.
+        centerOnActiveScreen(window)
         NSApp.activate(ignoringOtherApps: true)
-        settingsWindow?.makeKeyAndOrderFront(nil)
+        window.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self, weak window] in
+            guard let window else { return }
+            self?.centerOnActiveScreen(window)
+        }
     }
 
     /// Setzt ein Fenster exakt in die Mitte des Bildschirms, auf dem sich gerade der Mauszeiger
