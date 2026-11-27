@@ -38,9 +38,13 @@ struct ShortcutsPlug: PlugController {
     func setPower(_ on: Bool) async throws {
         let name = (toggleName ?? (on ? onName : offName)).trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { throw PlugError.notConfigured("Kein Kurzbefehl-Name hinterlegt") }
+        let started = Date()
+        Log.info("Kurzbefehl „\(name)“ wird ausgeführt (Ziel: \(on ? "ein" : "aus"))")
         do {
             try await Self.run(["run", name])
+            Log.info(String(format: "Kurzbefehl „%@“ erfolgreich (%.1f s)", name, Date().timeIntervalSince(started)))
         } catch {
+            Log.info(String(format: "Kurzbefehl „%@“ FEHLER nach %.1f s: %@", name, Date().timeIntervalSince(started), error.localizedDescription))
             let all = await Self.availableShortcuts()
             if !all.contains(name) {
                 throw PlugError.commandFailed("Kurzbefehl „\(name)“ nicht gefunden – bitte in der Kurzbefehle-App anlegen")

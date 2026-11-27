@@ -83,6 +83,10 @@ jobs:
                     -e "tell application \"Finder\" to set bounds of front window to {$(( W - 420 )), 120, $(( W - 60 )), 420}" || true
           sleep 2 && screencapture -x -R "$X,0,360,600" shots/9-hintergrund.png
           pkill -x MacCharge || true
+          # Normales Beenden darf NICHT als Herunterfahren gelten
+          open --env MACCHARGE_DEMO=1 dist/MacCharge.app; sleep 5
+          osascript -e 'tell application "MacCharge" to quit' || true; sleep 3
+          echo "----- Protokoll -----"; tail -n 25 ~/Library/Logs/MacCharge/MacCharge.log || true; echo "----- Ende -----"
           for f in shots/*.png; do echo "BEGIN64 $f"; base64 -i "$f"; echo "END64"; done
 
       - name: Screenshots hochladen
