@@ -8,6 +8,10 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 
 <img src="docs/4-leiste.png" alt="Leiste">
 
+**Power-Widget** (separat verschiebbar):
+
+<img src="docs/5-power-widget.png" alt="Power-Widget">
+
 ## Funktionen
 
 | Bereich | Was passiert |
@@ -21,6 +25,7 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 | **Thermik** | Thermischer Zustand von macOS (Normal / Erhöht / Hoch / Kritisch). |
 | **Ladesteuerung** | Bei ≥ Obergrenze wird die Steckdose **AUS** geschaltet, bei ≤ Untergrenze **EIN**. Dazwischen wird nicht geschaltet (Hysterese). Ob der Befehl gewirkt hat, prüft die App am Netzteilsignal des Macs. Schlägt das fehl, versucht sie es bis zu 3-mal erneut. |
 | **Herunterfahren & Ruhezustand** | Läuft Netzbetrieb, schaltet MacCharge die Steckdose vor dem Herunterfahren, Neustart oder Abmelden ab. Im Ruhezustand ebenfalls, aber nur, wenn der Akku über der unteren Grenze liegt. Nach dem Aufwachen prüft die Automatik sofort neu. Beides lässt sich unter Einstellungen → Laden abschalten. |
+| **Power-Widget** | Ein zweites, separat verschiebbares Mini-Widget mit **Aus, Neustart, Abmelden, Ruhe**. Zuerst wird die Steckdose abgeschaltet, erst danach führt MacCharge den macOS-Befehl aus. Zum Schutz vor Versehen muss man zweimal klicken („Sicher?“); das lässt sich abschalten. |
 | **Manuell** | Die Buttons *Ein*, *Aus* und *100 %* (einmalig voll laden). Manuelles Schalten pausiert die Automatik für 30 Minuten. |
 | **Warnungen ‼️** | Bei Überlastung färbt sich der betroffene Bereich rot und zeigt ‼️. Das gilt für CPU, GPU, RAM, Akkutemperatur, Thermik und Steckdose. Die Schwellwerte lassen sich einstellen. |
 | **Fenster** | Liegt standardmäßig im **Hintergrund** auf dem Schreibtisch, hinter allen anderen Fenstern, wie ein Desktop-Widget. Alternativ „Normal“ oder „Immer im Vordergrund“ (Einstellungen → Allgemein → Ebene). Lässt sich frei auf alle angeschlossenen Bildschirme ziehen. Die Position wird gespeichert. Wird ein Monitor abgesteckt, holt die App das Widget automatisch auf den Hauptbildschirm. |

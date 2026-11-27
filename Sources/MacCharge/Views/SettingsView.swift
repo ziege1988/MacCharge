@@ -199,6 +199,15 @@ private struct GeneralSettings: View {
                 Text("„Leiste“ ist flach und breit (\(Int(WidgetLayout.bar.size.width)) × \(Int(WidgetLayout.bar.size.height)) pt) – ideal oben auf einem zweiten Bildschirm. Jede Darstellung merkt sich ihre eigene Position. Schnell wechseln: Rechtsklick auf das Widget.")
                     .foregroundStyle(.secondary)
             }
+            Section {
+                Toggle("Power-Widget anzeigen (Aus / Neustart / Abmelden / Ruhe)", isOn: $settings.showPowerWidget)
+                Toggle("Zum Ausführen zweimal klicken (Schutz vor Versehen)", isOn: $settings.powerConfirm)
+            } header: {
+                Text("Power-Widget")
+            } footer: {
+                Text("Eigenes, frei verschiebbares Mini-Widget. Bei Aus, Neustart und Abmelden wird zuerst die Steckdose abgeschaltet (bei Netzbetrieb) und erst danach der Mac-Befehl ausgeführt. Beim ersten Mal fragt macOS, ob MacCharge „System Events“ steuern darf – bitte erlauben.")
+                    .foregroundStyle(.secondary)
+            }
             Section("Start & Fenster") {
                 Toggle("Beim Anmelden automatisch starten", isOn: $settings.launchAtLogin)
                 Picker("Ebene", selection: $settings.windowLevel) {

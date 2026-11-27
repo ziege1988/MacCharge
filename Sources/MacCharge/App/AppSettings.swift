@@ -110,6 +110,10 @@ final class AppSettings: ObservableObject {
     @Published var windowLevel: WindowLevelMode { didSet { d.set(windowLevel.rawValue, forKey: "windowLevel") } }
     @Published var showOnAllSpaces: Bool { didSet { d.set(showOnAllSpaces, forKey: "showOnAllSpaces") } }
     @Published var widgetOpacity: Double { didSet { d.set(widgetOpacity, forKey: "widgetOpacity") } }
+    /// Separates Power-Widget (Aus / Neustart / Abmelden / Ruhe).
+    @Published var showPowerWidget: Bool { didSet { d.set(showPowerWidget, forKey: "showPowerWidget") } }
+    /// Power-Widget: zweiter Klick zum Bestätigen.
+    @Published var powerConfirm: Bool { didSet { d.set(powerConfirm, forKey: "powerConfirm") } }
 
     // MARK: Updates
     @Published var autoCheckUpdates: Bool { didSet { d.set(autoCheckUpdates, forKey: "autoCheckUpdates") } }
@@ -142,6 +146,8 @@ final class AppSettings: ObservableObject {
             "windowLevel": WindowLevelMode.background.rawValue,
             "showOnAllSpaces": true,
             "widgetOpacity": 0.97,
+            "showPowerWidget": true,
+            "powerConfirm": true,
             "autoCheckUpdates": true,
         ])
         automationEnabled = d.bool(forKey: "automationEnabled")
@@ -170,6 +176,8 @@ final class AppSettings: ObservableObject {
         windowLevel = WindowLevelMode(rawValue: d.string(forKey: "windowLevel") ?? "") ?? .background
         showOnAllSpaces = d.bool(forKey: "showOnAllSpaces")
         widgetOpacity = d.double(forKey: "widgetOpacity")
+        showPowerWidget = d.bool(forKey: "showPowerWidget")
+        powerConfirm = d.bool(forKey: "powerConfirm")
         autoCheckUpdates = d.bool(forKey: "autoCheckUpdates")
     }
 
