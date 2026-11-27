@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private(set) lazy var monitor = SystemMonitor(settings: settings)
     private(set) lazy var charger = ChargeController(settings: settings, monitor: monitor)
     private(set) lazy var updater = UpdateManager(settings: settings)
+    private(set) lazy var powerActions = PowerActionController(settings: settings, charger: charger)
+    private var powerWidget: PowerWidgetWindow?
 
     private var widget: WidgetWindow?
     private var settingsWindow: NSWindow?
@@ -32,16 +34,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         LaunchAtLogin.apply(settings.launchAtLogin)
 
         setupWidget()
+        setupPowerWidget()
         setupStatusItem()
         observeSettings()
         setupPowerEvents()
     }
 
     // MARK: Herunterfahren & Ruhezustand
-
-    /// Einmaliger Abschaltvorgang beim Herunterfahren (wird von allen Signalen gemeinsam genutzt,
-    /// damit ein Umschalt-Kurzbefehl nie doppelt ausgeführt wird).
-    private var shutdownTask: Task<Void, Never>?
 
     private func setupPowerEvents() {
         Log.info("MacCharge \(AppInfo.version) gestartet")
@@ -73,27 +72,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// WLAN, Home-Dienste und Kurzbefehle noch laufen.
     @objc private func willPowerOff(_ note: Notification) {
         Log.info("macOS meldet: Herunterfahren / Neustart / Abmelden")
-        startShutdownSwitchOff(trigger: "Herunterfahren")
-    }
-
-    private func startShutdownSwitchOff(trigger: String) {
-        guard shutdownTask == nil else { return }
-        guard settings.offOnShutdown else {
-            Log.info("Abschalten beim Herunterfahren ist in den Einstellungen deaktiviert")
-            shutdownTask = Task {}
-            return
-        }
-        shutdownTask = Task { @MainActor in
-            await self.charger.switchOffForPowerEvent(reason: "\(trigger) → Strom aus", timeout: 20)
-        }
+        powerActions.startShutdownSwitchOff(trigger: "Herunterfahren")
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         let reason = Self.quitReason()
         Log.info("Beenden angefordert (Grund: \(reason ?? "MacCharge beenden"))")
         // Nur beim Herunterfahren/Neustart/Abmelden – nicht beim normalen Beenden oder bei Updates
-        if reason != nil { startShutdownSwitchOff(trigger: reason!) }
-        guard let task = shutdownTask else { return .terminateNow }
+        if let reason { powerActions.startShutdownSwitchOff(trigger: reason) }
+        guard let task = powerActions.shutdownTask else { return .terminateNow }
         Task { @MainActor in
             await task.value
             Log.info("Bereit zum Beenden")
@@ -115,26 +102,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Sicherer Weg: erst Strom aus (bestätigt), dann den Mac über macOS herunterfahren.
+    /// Menüpunkt: erst Strom aus, dann ausschalten (ohne zweiten Klick).
     @objc private func shutDownWithPowerOff() {
-        Log.info("„Strom aus & Mac ausschalten“ gewählt")
-        shutdownTask = Task { @MainActor in
-            await self.charger.switchOffForPowerEvent(reason: "Ausschalten über MacCharge → Strom aus", timeout: 20)
-        }
-        Task { @MainActor in
-            await self.shutdownTask?.value
-            var error: NSDictionary?
-            NSAppleScript(source: "tell application \"System Events\" to shut down")?.executeAndReturnError(&error)
-            if let error {
-                Log.info("Herunterfahren fehlgeschlagen: \(error)")
-                let alert = NSAlert()
-                alert.messageText = "Der Mac konnte nicht heruntergefahren werden"
-                alert.informativeText = "Bitte MacCharge unter Systemeinstellungen → Datenschutz & Sicherheit → Automation erlauben, „System Events“ zu steuern. Die Steckdose wurde bereits abgeschaltet."
-                NSApp.activate(ignoringOtherApps: true)
-                alert.runModal()
-                self.shutdownTask = nil
-            }
-        }
+        powerActions.perform(.shutdown)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -187,6 +157,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget.orderFrontRegardless()
     }
 
+    // MARK: Power-Widget
+
+    private func setupPowerWidget() {
+        let window = PowerWidgetWindow()
+        let view = PowerWidgetView()
+            .environmentObject(powerActions)
+            .environmentObject(monitor)
+        let hosting = NSHostingView(rootView: view)
+        hosting.sizingOptions = []
+        hosting.frame = NSRect(origin: .zero, size: PowerWidgetWindow.size)
+        hosting.autoresizingMask = [.width, .height]
+        hosting.appearance = NSAppearance(named: .darkAqua)
+        window.contentView = hosting
+        window.menu = contextMenu()
+        hosting.menu = window.menu
+        window.alphaValue = settings.widgetOpacity
+        powerWidget = window
+        applyWindowBehavior()
+        if settings.showPowerWidget { window.orderFrontRegardless() }
+    }
+
+    @objc private func togglePowerWidget() {
+        settings.showPowerWidget.toggle()
+    }
+
+    private func applyWindowBehavior() {
+        widget?.applyBehavior(levelMode: settings.windowLevel, allSpaces: settings.showOnAllSpaces)
+        powerWidget?.level = widget?.level ?? .normal
+        powerWidget?.collectionBehavior = widget?.collectionBehavior ?? []
+    }
+
     @objc func showWidget() {
         widget?.orderFrontRegardless()
     }
@@ -203,6 +204,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func resetWidgetPosition() {
         widget?.resetPosition()
         widget?.orderFrontRegardless()
+        powerWidget?.resetPosition()
     }
 
     // MARK: Einstellungen
@@ -233,7 +235,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Einstellungen …", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Widget ein-/ausblenden", action: #selector(toggleWidget), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Darstellung wechseln (Widget/Leiste)", action: #selector(toggleLayout), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Widget-Position zurücksetzen", action: #selector(resetWidgetPosition), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Power-Widget ein-/ausblenden", action: #selector(togglePowerWidget), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Widget-Positionen zurücksetzen", action: #selector(resetWidgetPosition), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Strom aus & Mac ausschalten …", action: #selector(shutDownWithPowerOff), keyEquivalent: "").target = self
         menu.addItem(.separator())
@@ -259,7 +262,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func observeSettings() {
         settings.$windowLevel.combineLatest(settings.$showOnAllSpaces)
             .dropFirst()
-            .sink { [weak self] mode, spaces in self?.widget?.applyBehavior(levelMode: mode, allSpaces: spaces) }
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in self?.applyWindowBehavior() }
             .store(in: &cancellables)
         settings.$layout
             .dropFirst()
@@ -269,7 +273,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
         settings.$widgetOpacity
             .dropFirst()
-            .sink { [weak self] value in self?.widget?.alphaValue = value }
+            .sink { [weak self] value in
+                self?.widget?.alphaValue = value
+                self?.powerWidget?.alphaValue = value
+            }
+            .store(in: &cancellables)
+        settings.$showPowerWidget
+            .dropFirst()
+            .sink { [weak self] show in
+                show ? self?.powerWidget?.orderFrontRegardless() : self?.powerWidget?.orderOut(nil)
+            }
             .store(in: &cancellables)
         settings.$launchAtLogin
             .dropFirst()

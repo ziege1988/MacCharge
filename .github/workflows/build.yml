@@ -83,6 +83,11 @@ jobs:
                     -e "tell application \"Finder\" to set bounds of front window to {$(( W - 420 )), 120, $(( W - 60 )), 420}" || true
           sleep 2 && screencapture -x -R "$X,0,360,600" shots/9-hintergrund.png
           pkill -x MacCharge || true
+          # Power-Widget (Standardposition unten rechts)
+          H=$(osascript -l JavaScript -e 'ObjC.import("AppKit"); $.NSScreen.mainScreen.frame.size.height'); H=${H%.*}
+          open --env MACCHARGE_DEMO=1 dist/MacCharge.app; sleep 5
+          screencapture -x -R "$(( W - 300 )),$(( H - 140 )),300,140" shots/10-power-widget.png
+          pkill -x MacCharge || true; sleep 1
           # Normales Beenden darf NICHT als Herunterfahren gelten
           open --env MACCHARGE_DEMO=1 dist/MacCharge.app; sleep 5
           osascript -e 'tell application "MacCharge" to quit' || true; sleep 3
