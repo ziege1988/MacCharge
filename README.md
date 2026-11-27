@@ -8,6 +8,10 @@ Kleines, schwebendes Widget für macOS, das Systemwerte anzeigt und das Laden de
 
 <img src="docs/4-leiste.png" alt="Leiste">
 
+**Power-Widget** (separat verschiebbar):
+
+<img src="docs/5-power-widget.png" alt="Power-Widget">
+
 ## Funktionen
 
 | Bereich | Was passiert |
